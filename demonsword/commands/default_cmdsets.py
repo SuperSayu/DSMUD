@@ -15,8 +15,8 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 """
 
 from evennia import default_cmds
-from .forage import ForageCommand
-from .rest import RestCommand
+from .forage import ForageCommand,MineCommand
+from .rest import RestCommand,TrainCommand,MeditateCommand,SleepCommand
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -32,11 +32,15 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         Populates the cmdset
         """
         super().at_cmdset_creation()
+        #
+        # These are mostly test commands intended to be the basis for the skill/stat advancements
+        #
         self.add(ForageCommand())
+        self.add(MineCommand())
         self.add(RestCommand())
-        #
-        # any commands you add below will overload the default ones.
-        #
+        self.add(TrainCommand())
+        self.add(MeditateCommand())
+        self.add(SleepCommand())
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):

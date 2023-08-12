@@ -20,5 +20,8 @@ class Room(ObjectParent, DefaultRoom):
     See examples/object.py for a list of
     properties and methods available on all Objects.
     """
-
+    # Resources which can be obtained by foraging, mining, and other verbs
+    resourceTags = {"forage":{},"mine":{}}
+    # Availability of stuff for reasons
+    trainingTags = {"train":False,"Meditate":False}
     pass
