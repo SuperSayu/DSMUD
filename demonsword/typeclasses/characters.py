@@ -11,8 +11,10 @@ from evennia.objects.objects import DefaultCharacter
 from evennia.utils.utils import lazy_property
 
 from .objects import ObjectParent
+
 from .statcore import StatCore
 from .skillcore import SkillCore
+from .equipcore import EquipmentCore
 
 
 class Character(ObjectParent, DefaultCharacter):
@@ -35,11 +37,29 @@ class Character(ObjectParent, DefaultCharacter):
     at_post_puppet - Echoes "AccountName has entered the game" to the room.
 
     """
-    
+#region handlers
     @lazy_property
     def stats(self):
         return StatCore(self)
     @lazy_property
     def skills(self):
         return SkillCore(self)
+    @lazy_property
+    def items(self):
+        return EquipmentCore(self)
+#endregion
     
+    exceptions=[]
+    def log_error(self,err:Exception, traceback):
+        self.msg(f"Exception: {err}")
+        self.msg(f"{traceback}")
+        self.msg()
+        self.exceptions.append([err,traceback])
+    
+    @property
+    def busy(self):
+        return self.ndb.busy
+    @busy.setter
+    def busy(self,b):
+        self.ndb.busy = b
+

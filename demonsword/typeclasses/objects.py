@@ -23,24 +23,31 @@ class ObjectParent:
     take precedence.
 
     """
+    
+    container=False # Property: this can hold portable things
+    portable=False # Property: this can be picked up
+    
+    def at_pre_object_receive(self,incoming):
+        """
+            This is specifically meant for Storage-type items, and will be overridden there.
+        """
+        if not self.container or not incoming.portable:
+            return False
+        return True
+    
+    def at_pre_move(self,destination):
+        """
+            Override to call at_pre_object_receive on destination
+        """
+        return destination.at_pre_object_receive(self)
 
 
 class Object(ObjectParent, DefaultObject):
     """
-    This is the root typeclass object, implementing an in-game Evennia
-    game object, such as having a location, being able to be
-    manipulated or looked at, etc. If you create a new typeclass, it
-    must always inherit from this object (or any of the other objects
-    in this file, since they all actually inherit from BaseObject, as
-    seen in src.object.objects).
-
-    The BaseObject class implements several hooks tying into the game
-    engine. By re-implementing these hooks you can control the
-    system. You should never need to re-implement special Python
+    You should never need to re-implement special Python
     methods, such as __init__ and especially never __getattribute__ and
     __setattr__ since these are used heavily by the typeclass system
     of Evennia and messing with them might well break things for you.
-
 
     * Base properties defined/available on all Objects
 
@@ -170,5 +177,7 @@ class Object(ObjectParent, DefaultObject):
                                  object speaks
 
     """
+    
 
+    
     pass
