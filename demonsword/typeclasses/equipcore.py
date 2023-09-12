@@ -8,9 +8,24 @@ class EquipmentCore:
         self.parent = character
         self.default_hand = character.attributes.get("default_hand",default="r")
         self.non_default_hand = "l" if self.default_hand == "r" else "r"
-        
+    def show(self):
+        """
+        Display inventory to self.  Called by inventory command.
+        """
+        r=self.hand_r
+        l=self.hand_l
+        self.parent.msg("You are carrying:")
+        if r == None and l == None:
+           self.parent.msg("Nothing.")
+           return
+        if r != None:
+           self.parent.msg(f"In your right hand, a {r}.")
+        if l != None:
+           self.parent.msg(f"In your left hand, a {l}.")
+        pass
     def pickup(self,item):
         if not isinstance(item,Item) or not item.portable:
+            self.parent.msg(f"You can't get the {item}.")
             return False
         if item.location == self:
             return False
@@ -24,6 +39,21 @@ class EquipmentCore:
             return True
         self.parent.msg("Your hands are full.")
         return
+    def drop(self,item):
+        if item == self.main_hand:
+           self.main_hand = None
+           item.move_to(self.parent.location,quiet=True)
+           self.parent.msg(f"You drop the |w{item}|n.")
+           self.parent.location.msg_contents("|w{person}|n drops a |w{item}|n.",mapping={"person":self.parent,"item":item},exclude=(self.parent) )
+           return True
+        elif item == self.off_hand:
+           self.off_hand = None
+           item.move_to(self.parent.location,quiet=True)
+           self.parent.msg(f"You drop the |w{item}|n.")
+           self.parent.location.msg_contents("|w{person}|n drops a |w{item}|n.",mapping={"person":self.parent,"item":item},exclude=(self.parent) )
+           return True
+        else:
+           self.parent.msg("You aren't carrying that.")
     def require(self,itemClass=Item,itemTags=[],manual=True,swap=False):
         """
             Finds an item in your equipment, hands, or quick item slots.
@@ -47,6 +77,24 @@ class EquipmentCore:
                 continue
             
         return None
+    def swap_hands(self):
+       l,r = self.hand_l, self.hand_r
+       if l:
+          if r:
+             self.parent.attributes.add("hand_l",r,category="equip")
+             r.at_reequip(self.parent,"hand_l")
+          else:
+            self.parent.attributes.add("hand_l",None,category="equip")
+          self.parent.attributes.add("hand_r",l,category="equip")
+          l.at_reequip(self.parent,"hand_r")
+       elif r:
+          self.parent.attributes.add("hand_l",r,category="equip")
+          r.at_reequip(self.parent,"hand_l")
+          self.parent.attributes.add("hand_r",None,category="equip")
+       else:
+          self.parent.msg("Your hands are empty!")
+          return
+       self.parent.msg("You swap the items in your hands around.")
     
 #region slots
     @property
@@ -91,14 +139,21 @@ class EquipmentCore:
     def hand_l(self,item):
         # These safety checks should be redundant
         if self.hand_l != None:
+            if item == None:
+               self.hand_l.at_unequip(self.parent)
+               self.parent.attributes.add("hand_l",None,category="equip")
             return
         if not isinstance(item,Item) or not item.portable:
             return
-        if item.slot != None:
+        if item.db.slot != None:
             item.at_unequip(self.parent)
-        item.move_to(self.parent)
+        ol = item.location
+        item.move_to(self.parent,quiet=True)
         self.parent.attributes.add("hand_l",item,category="equip")
         item.at_equip(self.parent,"hand_l")
+        self.parent.msg(f"You pick up the |w{item}|n with your |wleft|n hand.")
+        if ol != self.parent:
+           ol.msg_contents("|w{person}|n picks up the |w{item}|n",mapping={"person":self.parent,"item":item},exclude=(self.parent) )
 # Right hand
     @property
     def hand_r(self):
@@ -106,15 +161,22 @@ class EquipmentCore:
     @hand_r.setter
     def hand_r(self,item):
         if self.hand_r != None:
+            if item == None:
+                 self.hand_r.at_unequip(self.parent)
+                 self.parent.attributes.add("hand_r",None,category="equip")
             return
         if not isinstance(item,Item) or not item.portable:
             return
-        if item.slot != None:
+        if item.db.slot != None:
             item.at_unequip(self.parent)
-        item.move_to(self.parent)
+        ol = item.location
+        item.move_to(self.parent,quiet=True)
         self.parent.attributes.add("hand_r",item,category="equip")
         item.at_equip(self.parent,"hand_r")
-# Backpack        
+        self.parent.msg(f"You pick up the |w{item}|n with your |wright|n hand.")
+        if ol != self.parent:
+           ol.msg_contents("|w{person}|n picks up the |w{item}|n.",mapping={"person":self.parent,"item":item},exclude=(self.parent) )
+# Backpack
     @property
     def back(self):
         return self.parent.attributes.get("back",category="equip",default=None)
@@ -124,7 +186,7 @@ class EquipmentCore:
             return
         if not isinstance(item,Item) or not item.portable:
             return
-        if item.slot != None:
+        if item.db.slot != None:
             item.at_unequip(self.parent)
         item.move_to(self.parent)
         self.parent.attributes.add("back",item,category="equip")
@@ -139,7 +201,7 @@ class EquipmentCore:
             return
         if not isinstance(item,Item) or not item.portable:
             return
-        if item.slot != None:
+        if item.db.slot != None:
             item.at_unequip(self.parent)
         item.move_to(self.parent)
         self.parent.attributes.add("belt",item,category="equip")

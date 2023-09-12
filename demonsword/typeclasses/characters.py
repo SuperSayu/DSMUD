@@ -9,9 +9,10 @@ creation commands.
 """
 from evennia.objects.objects import DefaultCharacter
 from evennia.utils.utils import lazy_property
+from evennia.utils.create import create_object
 
 from .objects import ObjectParent
-
+from .items import Item
 from .statcore import StatCore
 from .skillcore import SkillCore
 from .equipcore import EquipmentCore
@@ -37,10 +38,14 @@ class Character(ObjectParent, DefaultCharacter):
     at_post_puppet - Echoes "AccountName has entered the game" to the room.
 
     """
+
 #region handlers
     @lazy_property
     def stats(self):
-        return StatCore(self)
+        if self.db.statcore == None:
+            self.db.statcore = create_object("statcore.StatCore", key="(internal:statcore)", location=self, home=self)
+        return self.db.statcore
+        #return StatCore(self)
     @lazy_property
     def skills(self):
         return SkillCore(self)

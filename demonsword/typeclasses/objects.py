@@ -27,7 +27,7 @@ class ObjectParent:
     container=False # Property: this can hold portable things
     portable=False # Property: this can be picked up
     
-    def at_pre_object_receive(self,incoming):
+    def at_pre_item_receive(self,incoming):
         """
             This is specifically meant for Storage-type items, and will be overridden there.
         """
@@ -35,11 +35,11 @@ class ObjectParent:
             return False
         return True
     
-    def at_pre_move(self,destination):
-        """
-            Override to call at_pre_object_receive on destination
-        """
-        return destination.at_pre_object_receive(self)
+#    def at_pre_move(self,destination,move_type="move",**kwargs):
+#        """
+#            Override to call at_pre_object_receive on destination
+#        """
+#        return destination.at_pre_object_receive(self)
 
 
 class Object(ObjectParent, DefaultObject):

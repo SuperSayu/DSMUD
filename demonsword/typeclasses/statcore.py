@@ -7,6 +7,7 @@
 from util.random import roll
 
 from .attr_aspect import AttributeList,AspectList,ValidStatIndex,AttributeToAspects,Stat,Aspect
+from .objects import Object
 from typing import Union,Generator
 # Increment when revised
 STAT_VERSION = 0.1
@@ -14,12 +15,13 @@ STAT_VERSION = 0.1
 
 
 
-class StatCore:
+class StatCore(Object):
     """
         The StatCore implements indexing[] for stat indexes, both aspects and attributes
     """
-    def __init__(self,parent):
-        self.parent=parent
+    lockstring="control:perm(Admin);view:none();get:none();drop:none();teleport:none();teleport_here:none();puppet:none();tell:none()"
+    def at_init(self):
+        self.parent=self.location
         self._load()
     
     def __getitem__(self, index:str) -> Aspect|Stat:
@@ -40,12 +42,12 @@ class StatCore:
         return temp
     
     def PADSTR(self,x:str,width:int=3) -> str:
-        """makes the number x padded to 3 characters, sorta"""
+        """makes the number x padded to [width] characters, sorta"""
         n = self[x].value.__str__()
         return n.center(width,' ')
     
-    def __str__(self) -> str:
-        return f"""| |wXP:|n{self.exp.__str__().rjust(6)} | |wLV:|n{self.level.__str__().rjust(6)} |
+    def show(self) -> None:
+        self.parent.msg(f"""| |wXP:|n{self.exp.__str__().rjust(6)} | |wLV:|n{self.level.__str__().rjust(6)} |
 | |wLUC|n | |wBOD|n | |wMND|n | |wSPR|n |
 | {self.PADSTR('luc')} | {self.PADSTR('bod')} | {self.PADSTR('mnd')} | {self.PADSTR('spr')} |
 | |wPOW|n | STR | INT | WIL |
@@ -59,35 +61,32 @@ class StatCore:
 | |wAES|n | BEA | SAN | GRA |
 | {self.PADSTR('aes')} | {self.PADSTR('bea')} | {self.PADSTR('san')} | {self.PADSTR('gra')} |
 | |wHEA|n |  HP |  MP |  SP |
-| {self.PADSTR('hea')} | {self.PADSTR('hp')} | {self.PADSTR('mp')} | {self.PADSTR('sp')} |"""
-    
-    def show(self) -> None:
-        self.parent.msg(self.__str__())
+| {self.PADSTR('hea')} | {self.PADSTR('hp')} | {self.PADSTR('mp')} | {self.PADSTR('sp')} |""")
         
     def _load(self) -> None:
         """
             Internal: Import data from Evennia attributes
         """
-        self.stats = self.parent.attributes.get(
+        self.stats = self.attributes.get(
             "stats",
             default={})
-        self.exp = self.parent.attributes.get( "exp", default=0 )
-        self.level = self.parent.attributes.get( "lvl", default=0 )
+        self.exp = self.attributes.get( "exp", default=0 )
+        self.level = self.attributes.get( "lvl", default=0 )
         
     def _save(self) -> None:
         """
             Internal: Save data to Evennia attributes
         """
-        self.parent.db.add("stats",self.stats)
-        self.parent.attributes.add("exp",self.exp)
-        self.parent.attributes.add("lvl",self.level)
+        self.attributes.add("stats",self.stats)
+        self.attributes.add("exp",self.exp)
+        self.attributes.add("lvl",self.level)
         
     def _reset(self) -> None:
         """
             Debug: Removes all character stats to return to base state
         """
-        self.parent.attributes.clear(category="stats")
-        self.parent.attributes.remove("exp") 
+        self.attributes.clear(category="stats")
+        self.attributes.remove("exp") 
         while len(self.stats):
             (k,o) = self.stats.popitem()
             del o

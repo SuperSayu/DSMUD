@@ -33,7 +33,7 @@ def link_skill_stat_callback(caller,prompt,response,skill):
         return
     skill.stat = response
     res_name = StatNames[response]
-    caller.msg(f"You link the {skill.name} skill to your {res_names} stat.")
+    caller.msg(f"You link the {skill.name} skill to your {res_name} stat.")
     skill.train_up()
     caller.skills.training = None
 

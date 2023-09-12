@@ -16,12 +16,14 @@ from .objects import Object
 class Item(Object):
     portable=True   # Overrides object/portable
     size = 0        # Determines what containers this can be stored in
-    slot = None     # In case this item is currently held/worn, store where
+    #slot = None     # In case this item is currently held/worn, store where
     
     def at_equip(self,character, slot): # includes 
-        self.slot = slot
+        self.db.slot = slot
+    def at_reequip(self,character,newSlot): # From one equip slot to another
+        self.db.slot = newSlot
     def at_unequip(self,character):
-        self.slot = None
+        self.db.slot = None
  
     
 class Equipment(Item):

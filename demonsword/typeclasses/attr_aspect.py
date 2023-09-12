@@ -100,6 +100,7 @@ class Stat:
     """
     def __init__(self,character,key:str):
         self.parent = character
+        self.core   = character.stats
         self.key    = key
         if not (key in AttributeList):
             raise Exception(f"Not a stat: {key}")
@@ -115,17 +116,17 @@ class Stat:
         """
             Internal: Load data from Evennia attribute dictionary
         """
-        self.data = self.parent.attributes.get(self.key,category="stats",
+        self.data = self.core.attributes.get(self.key,category="stats",
             default={"bonus":0,"exp":0,"stress":0} )
         self.col_key, self.row_key = AttributeToAspects(self.key) # I love python :)
-        self.col = self.parent.stats[self.col_key]
-        self.row = self.parent.stats[self.row_key]
+        self.col = self.core.stats[self.col_key]
+        self.row = self.core.stats[self.row_key]
         
     def _save(self):
         """
             Internal: Save data to EVennia attribute dictionary
         """
-        self.parent.attributes.add(self.key,self.data,category="stats")
+        self.core.attributes.add(self.key,self.data,category="stats")
     
     # Exercising a stat actually either exercises the row or column.
     # When you rest, the exp is distributed randomly.  Full stats improve with sleep.
@@ -223,8 +224,9 @@ class Aspect:
     related=[] # stats
     data=None # { bonus:int,exp:int }
     def __init__(self,character,key):
-        self.parent=character
-        self.key=key
+        self.parent = character
+        self.core   = character.stats
+        self.key    = key
         if not (key in AspectList):
             raise Exception(f"Not an aspect: {key}")
             
@@ -244,9 +246,9 @@ class Aspect:
     def __str__(self):
         return self.data.__str__()
     def _load(self):
-        self.data = self.parent.attributes.get(self.key,category="stats",default={"bonus":0,"exp":0})
+        self.data = self.core.attributes.get(self.key,category="stats",default={"bonus":0,"exp":0})
     def _save(self):
-        self.parent.attributes.add(self.key,self.data,category="stats")
+        self.core.attributes.add(self.key,self.data,category="stats")
     
     # Resting: Distribute experience to child 
     def Rest(self):
