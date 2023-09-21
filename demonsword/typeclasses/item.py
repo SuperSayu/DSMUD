@@ -12,19 +12,52 @@
         * Low chance of variants, only when quality is max
 """
 from .objects import Object
+from util.AttrProperty import AttributeProperty
 
 class Item(Object):
-    portable=True   # Overrides object/portable
-    size = 0        # Determines what containers this can be stored in
-    #slot = None     # In case this item is currently held/worn, store where
+    # Old properties
+    portable    = True                                  # ObjectParent/portable
+    # New properties
+    size        = AttributeProperty("size",1)           # Determines what containers this can be stored in
+    wear_slot   = AttributeProperty("wear_slot",None)   # None, string, or list of strings matching equipcore slots
+    slot        = AttributeProperty("slot",None)        # In case this item is currently held/worn, store where
+    belt_attach = AttributeProperty("belt_attach",False)# Meant to be hunt on a belt
+    fast_remove = AttributeProperty("fast_remove",False)# Equipment: Can be pulled off without effort
     
     def at_equip(self,character, slot): # includes 
-        self.db.slot = slot
+        self.slot = slot
     def at_reequip(self,character,newSlot): # From one equip slot to another
-        self.db.slot = newSlot
+        self.slot = newSlot
     def at_unequip(self,character):
-        self.db.slot = None
+        self.slot = None
+    @property
+    def fast_contents(self):
+        """
+        Fast-action contents of this object: Lists highly accessible objects
+        which can be used instantly, eg, without digging through your backpack.
+        This is intended for storage objects but must be defined on all objects.
+        This is specifically for belts, and pockets that only contain one item apiece.
+        
+        Does not return self.
+        """
+        return []
+    @property
+    def sub_containers(self):
+        """
+        Some containers are specifically meant to hold other containers,
+        and these containers should be accessible.  This is for things like
+        belts that have attachments.
+        
+        Does not return self.
+        """
+        return []
  
     
 class Equipment(Item):
+
     pass
+    
+class Pants(Equipment):
+    wear_slot="legs"
+class Shirt(Equipment):
+    wear_slot="shirt"

@@ -19,7 +19,7 @@ from .forage import ForageCommand,MineCommand
 from .rest import RestCommand,TrainCommand,MeditateCommand,SleepCommand,ResetStatsCommand
 from .stat_skill import StatsCommand,SkillsCommand
 from .StateCommandBase import StopCommand
-from .get_override import GetCommand,DropCommand,InventoryCommand,SwapHandsCommand
+from .get_override import GetCommand,DropCommand,InventoryCommand,SwapHandsCommand,PutCommand,WearCommand,RemoveCommand,LookInCommand
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -56,10 +56,14 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(SleepCommand())
         self.add(ResetStatsCommand())
         
-        # Replacing default inventory commands
+        # Inventory commands
         self.add(GetCommand())
         self.add(DropCommand())
+        self.add(PutCommand())
+        self.add(WearCommand())
+        self.add(RemoveCommand())
         self.add(InventoryCommand())
+        self.add(LookInCommand())
         self.add(SwapHandsCommand())
 
 

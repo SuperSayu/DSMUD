@@ -111,7 +111,11 @@ class Stat:
             Debug: Returns string representation of Evennia attribute dictionary
         """
         return self.data.__str__()
-    
+    def __int__(self):
+        """
+        int(Stat) is its value
+        """
+        return self.value
     def _load(self):
         """
             Internal: Load data from Evennia attribute dictionary

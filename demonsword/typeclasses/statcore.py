@@ -77,7 +77,7 @@ class StatCore(Object):
         """
             Internal: Save data to Evennia attributes
         """
-        self.attributes.add("stats",self.stats)
+        #self.attributes.add("stats",self.stats)
         self.attributes.add("exp",self.exp)
         self.attributes.add("lvl",self.level)
         

@@ -11,12 +11,15 @@ from util.random import roll,show_roll
 from .attr_aspect import AttributeList,AspectList,StatGrid,StatNames
 from random import randint
 from evennia.utils.evmenu import get_input # caller, prompt, callback, *args, **kwargs
+from world.skills import SkillDB
 # Increment when revised
 SKILLS_VERSION = 0.1
 
 # I believe this coefficient may be better at 0.55 for approx 1% xp at +/-8
 # This coefficient is for debugging (involving massive skill grinding)
 SKILL_PRACTICE_COEFFICIENT = 0.875
+
+skilldb = SkillDB()
 
 def link_skill_to_stat(caller,skill):
     caller.msg(f"You need to pick a primary stat to use for the {skill.name} skill.  Choose one from this grid:")
@@ -116,9 +119,9 @@ class Skill:
         return f"{i}{self.exp_fraction(x-i)}"
         
     def __str__(self): # todo pretty print
-        v=" | "
+        v=" |C|||n "
         return v.join([
-            self.name.rjust(10),
+            f"|w{self.name}|n".rjust(14),
             self.exp_str().center(5),
             self.effort.__str__().center(5),
             self.training.__str__().center(5),
@@ -128,7 +131,8 @@ class Skill:
     def _save(self):
         self.parent.attributes.add(self.key,self.data,category="skills")
     def _load(self):
-        self.data = self.parent.attributes.get(self.key,category="skills",default={"key":self.key,"name":self.key,"stat":None,"aspect":None,"tags":None,"exp":0.0,"effort":0,"training":0,"affinity":0,"mastery":0})
+        self.data = self.parent.attributes.get(self.key,category="skills",default={"key":self.key,"stat":None,"aspect":None,"exp":0.0,"effort":0,"training":0,"affinity":0,"mastery":0})
+        self.flavor = skilldb[self.key]
         # todo: lookup tags on first set
     def _reset(self):
         self.parent.attributes.remove(self.key,category="skills")
@@ -204,7 +208,13 @@ class Skill:
         #self._save()
     @property
     def name(self):
-        return self.data["name"]
+        return self.flavor["name"]
+    @property
+    def doing(self):
+        return self.flavor["doing"]
+    @property
+    def desc(self):
+        return self.flavor["desc"]
     @property
     def effort(self):
         return self.data["effort"]

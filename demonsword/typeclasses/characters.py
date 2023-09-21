@@ -12,7 +12,7 @@ from evennia.utils.utils import lazy_property
 from evennia.utils.create import create_object
 
 from .objects import ObjectParent
-from .items import Item
+from .item import Item
 from .statcore import StatCore
 from .skillcore import SkillCore
 from .equipcore import EquipmentCore
@@ -52,6 +52,15 @@ class Character(ObjectParent, DefaultCharacter):
     @lazy_property
     def items(self):
         return EquipmentCore(self)
+    
+    @property
+    def internals(self):
+        """
+        Returns a list of any Evennia objects carried by a character
+        which will not show up in inventory but which should not
+        be ejected from the character if detected.
+        """
+        return [self.stats]
 #endregion
     
     exceptions=[]

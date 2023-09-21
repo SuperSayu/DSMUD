@@ -11,7 +11,7 @@ inheritance.
 
 """
 from evennia.objects.objects import DefaultObject
-
+from util.AttrProperty import AttributeProperty,UpdateDefaults
 
 class ObjectParent:
     """
@@ -23,18 +23,39 @@ class ObjectParent:
     take precedence.
 
     """
+    container   = AttributeProperty("container",False) # Property: this can hold portable things
+    portable    = AttributeProperty("portable", False) # Property: this can be picked up
     
-    container=False # Property: this can hold portable things
-    portable=False # Property: this can be picked up
-    
-    def at_pre_item_receive(self,incoming):
+    def at_pre_item_receive(self,incoming,slot=""):
         """
             This is specifically meant for Storage-type items, and will be overridden there.
         """
         if not self.container or not incoming.portable:
             return False
         return True
+    def at_item_receive(self,incoming,slot=""):
+        """
+        You got a thing in me.
+        """
+        return
+        
+    def describe_contents(self, looker):
+        """
+        Report contents as though someone was looking inside
+        """
+        looker.msg(f"Inside of the |w{self}|n, you see:")
+        if len(self.contents) == 0:
+            looker.msg("* |yNothing|n.")
+        def report(item):
+            looker.msg(f"* A |w{item}|n.")
+        self.for_contents(report)
     
+    def __init_subclass__(cls):
+        """
+        Handle AttrProperty classes throughout the _thing.
+        """
+        UpdateDefaults(super())
+        
 #    def at_pre_move(self,destination,move_type="move",**kwargs):
 #        """
 #            Override to call at_pre_object_receive on destination

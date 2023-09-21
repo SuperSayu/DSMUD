@@ -42,9 +42,9 @@ class SkillCore:
         """
             Debug/Temporary: Formal all skills into a simple list.
         """
-        result=f"Skill Name |  exp  |  eff\u25b3 |  trn\u25ca |  aff\u25c8 |  mas\u25cc\n----------------------------------------------------\n"
+        result=f"|CSkill Name |||n  exp  |C|||n  eff\u25b3 |C|||n  trn\u25ca |C|||n  aff\u25c8 |C|||n  mas\u25cc|/|C----------------------------------------------------|n|/"
         for skill in self.parent.attributes.all(category="skills"):
-            result += self[skill.key].__str__() + "\n"
+            result += self[skill.key].__str__() + "|/"
         return result
     
     def __iter__(self):
@@ -80,12 +80,14 @@ class SkillCore:
             if not self.parent.attributes.has(selected,category="skills"):
                 self.parent.msg(f"You have no {selected} skill.")
                 return
-            self.parent.msg("Skill Name |  exp  |  eff\u25b3 |  trn\u25ca |  aff\u25c8 |  mas\u25cc\n----------------------------------------------------\n")
+            self.parent.msg("|CSkill Name |||n  exp  |C|||n  eff\u25b3 |C|||n  trn\u25ca |C|||n  aff\u25c8 |C|||n  mas\u25cc|/|C----------------------------------------------------|n|/")
             if type(selected) is list:
                 for s in selected:
                     self.parent.msg(self[s].__str__())
+                    self.parent.msg("|/"+self[s].desc)
             else:
                 self.parent.msg(self[selected].__str__())
+                self.parent.msg("|/"+self[selected].desc)
         else:
             self.parent.msg(self.__str__())
     def _load(self): # Not really needed since skills load on a lazy basis
