@@ -103,6 +103,7 @@ class Skill:
             self._load()
         else: # Override used when the skill core needs to pull all skills, no use redoing queries
             self.data = data
+            self.flavor = skilldb[self.key]
     def exp_fraction(self,f):
         simple={1:"⅞",7/8:"¾",3/4:"⅝",5/8:"½",1/2:"⅜",3/8:"¼",1/4:"⅛",1/8:""}
         while len(simple):
@@ -181,21 +182,21 @@ class Skill:
         if result < 1: # Hard minimum, no matter the min tier.  This might be negative with brute stats!
             if fail_func != None:
                 #self.parent.msg(f"Hard fail {result}:{result_tier} ({min_tier}-{tier}-{max_tier})")
-                fail_func(self,result-challenge,tier - result_tier,**data)
+                fail_func(self,result_tier,tier - result_tier,**data)
             return -1
         
         boost = 0
         if result_tier < min_tier:
             if fail_func != None:
                 #self.parent.msg(f"Hard fail {result}:{result_tier} ({min_tier}-{tier}-{max_tier})")
-                fail_func(self,result-challenge,result_tier - tier,**data)
+                fail_func(self,result_tier,result_tier - tier,**data)
         elif success_func != None:
             boost = min(result_tier - tier, max_tier)
             #if boost < 0:
                 #self.parent.msg(f"Penalty {boost}; {result}:{result_tier} ({min_tier}-{tier}-{max_tier})")
             #else:
                 #self.parent.msg(f"Boost {boost}; {result}:{result_tier} ({min_tier}-{tier}-{max_tier})")
-            success_func(self,result-challenge, boost, **data)
+            success_func(self,result_tier, boost, **data)
         return result_tier
 
 #region properties    
@@ -321,7 +322,7 @@ class Skill:
                 self.parent.msg("Your skill feels more experienced.")
         else:
             #debug print
-            self.parent.msg(f"Gained {amt} skill xp")
+            #self.parent.msg(f"Gained {amt} skill xp")
             pass
         self._save()
         if self.stat != None:

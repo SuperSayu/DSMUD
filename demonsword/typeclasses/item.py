@@ -51,8 +51,7 @@ class Item(Object):
         Does not return self.
         """
         return []
- 
-    
+
 class Equipment(Item):
 
     pass

@@ -17,11 +17,13 @@ at_server_cold_stop()
 
 """
 
+from world.prototype_db import PrototypeDB
 
 def at_server_init():
     """
     This is called first as the server is starting up, regardless of how.
     """
+    PrototypeDB() # load toml prototypes
     pass
 
 

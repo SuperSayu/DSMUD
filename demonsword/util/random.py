@@ -1,10 +1,29 @@
-from random import randint
+from random import randint,random,choice
+
+def randfloat(min,max,grain=0.001):
+    """
+    Random bounded floating point number with maximum precision
+    (not counting floating point errors)
+    """
+    return ((min + random() * (max-min)) // grain) * grain
+
+def madlib(text,*args,**kwargs):
+    if args != None:
+        args = [*args]
+        for i in range(0, len(args)):
+            if isinstance(args[i],list):
+                args[i] = choice(args[i])
+    if kwargs != None:
+        for k,v in kwargs.items():
+            if isinstance(v,list):
+                kwargs[k] = choice(v)
+    return text.format(*tuple(args),**kwargs)
 
 def prob(prob_num):
     """
         Returns true (prob_num / 100)% of the time
     """
-    return (randint(0,9999)/100. < prob_num)
+    return (randint(0,9999)/100.) < prob_num
 
 def show_roll(caller,skillName,challenge=0,*,d4=0,d6=0,d8=0,d10=0,d12=0,d16=0,d20=0, brute=0,slip=0):
     

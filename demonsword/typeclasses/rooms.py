@@ -21,8 +21,10 @@ class Room(ObjectParent, DefaultRoom):
     properties and methods available on all Objects.
     """
     container=True
-    # Resources which can be obtained by foraging, mining, and other verbs
-    resourceTags = {"forage":{},"mine":{}}
+    
+    # If you attempt certain resource actions, you may generate a resource node
+    # These are prototype name 
+    resourceNodes = {"forage":["berrybush"],"mine":[]}
     # Availability of stuff for reasons
     trainingTags = {"rest":False,"train":False,"Meditate":False}
     pass

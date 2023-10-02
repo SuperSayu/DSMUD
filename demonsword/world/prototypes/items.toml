@@ -1,0 +1,68 @@
+# TOML encoding: prototype key is table name
+
+# Equipment
+[backpack]
+    key="backpack"
+    typeclass="typeclasses.storage_object.Backpack"
+	prototype_desc = "A basic backpack."
+[belt]
+	key="belt"
+	typeclass="typeclasses.storage_object.Belt"
+[beltpouch]
+	key="pouch"
+	typeclass="typeclasses.storage_object.BeltStorage"
+[scabbard]
+	key="scabbard"
+	typeclass="typeclasses.storage_object.BeltScabbard"
+
+[trashcan]
+	key="trash can"
+	typeclass="typeclasses.storage_object.Destroyer"
+	portable=false
+
+# Resources
+[berries]
+	key="$choice('blue','black','red','sour','green')berries"
+	typeclass="typeclasses.resources.Resource"
+	quality= { "randint"= [ 1, 10] }
+[rotberries]
+	prototype_parent="berries"
+	key="$choice('rot','stink','crap','foul')berries"
+	quality=0
+[magicberries]
+	prototype_parent="berries"
+	key="magic $choice('blue','black','red','sour','green')berries"
+	quality=10
+[stick]
+	key="stick"
+	typeclass="typeclasses.resources.Resource"
+	quality= { "randint" = [ 1, 5 ] }
+[stickystick]
+	prototype_parent="stick"
+	key="sticky stick"
+	quality= { "randint" = [ 0, 1 ] }
+[magicstick]
+	prototype_parent="stick"
+	key="magic stick"
+	quality= { "randint" = [ 5, 10 ] }
+
+
+[berrybush]
+	key = "berry bush"
+	typeclass="typeclasses.resources.ResourceNode"
+	min_tier = 0
+	max_tier = 3
+	nominal_tier = 2
+	rare_chance = 5
+	trash_chance = 35
+	[berrybush.resources]
+		0 = { stick = 15, "" = 85 }
+		1 = { stick = 35, berries=15, "" = 60 }
+		2 = { stick = 35, berries=50, "" = 15 }
+		3 = "berries"
+	[berrybush.rare]
+		stick = "magicstick"
+		berries = "magicberries"
+	[berrybush.trash]
+		stick = "stickystick"
+		berries = "rotberries"

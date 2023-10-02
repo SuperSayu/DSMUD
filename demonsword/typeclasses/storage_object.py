@@ -9,7 +9,13 @@ class Storage(Equipment):
     container=True  # ObjectParent
     size = 2        # Item 
     # new properties
+    open     = AttributeProperty("open",True)
     max_size = AttributeProperty("max_size",1)
+    
+    def open_container(self):
+        self.open = True
+    def close_container(self):
+        self.open = False
     
     def fit_check(self,incoming):
         if incoming.size > self.max_size:
@@ -19,9 +25,19 @@ class Storage(Equipment):
         """
             This is specifically meant for Storage-type items.
         """
-        if not self.container or not incoming.portable:
+        if not self.container or not self.open or not incoming.portable:
             return False
         return self.fit_check(incoming)
+
+class Destroyer(Storage):
+    max_size = 999
+    def at_init(self):
+        for obj in self.contents:
+            obj.delete()
+    def at_object_receive(self,incoming,user,**kwargs):
+        user.msg(f"What {incoming}?")
+        incoming.delete()
+
 class Backpack(Storage):
     wear_slot="back"
     max_size = 2
@@ -80,5 +96,5 @@ class BeltScabbard(Storage):
             return False
         if incoming.size > self.max_size:
             return False
-        # todo: item type check
+        # todo: item type check: is sword
         return True

@@ -12,6 +12,8 @@ inheritance.
 """
 from evennia.objects.objects import DefaultObject
 from util.AttrProperty import AttributeProperty,UpdateDefaults
+from evennia.prototypes import spawner
+#from .characters import Character
 
 class ObjectParent:
     """
@@ -36,6 +38,12 @@ class ObjectParent:
     def at_item_receive(self,incoming,slot=""):
         """
         You got a thing in me.
+        """
+        return
+    def spawned_by(self,spawner=None,user=None):
+        """
+        Called automatically when a SpawnerObject spawns this item.
+        May also be called in other circumstances.
         """
         return
         
@@ -202,3 +210,49 @@ class Object(ObjectParent, DefaultObject):
 
     
     pass
+
+class SpawnerObject(Object):
+    """
+    SpawnerObjects are meant to simplify spawning stuff
+    """
+    giver = AttributeProperty("spawn_giver",False)
+    def spawn(self,proto_key,user=None):
+        #self.source = PrototypeDB()
+        #prototype = self.source[proto_key]
+        
+        if proto_key == None or proto_key == 0 or proto_key == "":
+            return []
+        
+        if isinstance(proto_key,str):
+            obj = spawner.spawn(proto_key)
+        elif isinstance(proto_key,list):
+            obj = spawner.spawn(*proto_key)
+        
+        
+        if isinstance(obj,list):
+            for o in obj:
+                if isinstance(o,Object):
+                    o.spawned_by(self,user)
+                    self.spawn_success(o,user)
+        elif isinstance(obj,Object):
+            obj.spawned_by(self,user)
+            self.spawn_success(obj,user)
+        elif obj == None:
+            return []
+        else: # ???
+            raise "SpawnerObject.spawn:what?"
+            return []
+        
+        return obj
+
+    def spawn_success(self,obj,user):
+        obj.location = self.location
+        if self.giver and isinstance(user,DefaultObject):
+            check=user.items.pickup(obj,silent=True)
+            if check:
+                user.msg(f"You find a |w{obj}|n!  You pick it up.")
+            else:
+                user.msg(f"You find a |w{obj}|n")
+            return
+        if user:
+            user.msg(f"You see a |w{obj}|n laying around.")

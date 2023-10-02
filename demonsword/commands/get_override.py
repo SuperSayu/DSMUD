@@ -18,7 +18,7 @@ class GetCommand(Command):
             location = locs)
         if hasattr(self.object,"__iter__"):
             self.object = [*self.object]
-            for x in self.caller.items.hands:            
+            for x in self.caller.items.slots:            
                 if x in self.object:
                     self.object.remove(x)
         if isinstance(self.object,list):
@@ -193,7 +193,12 @@ class LookInCommand(Command):
     """
     key="look in"
     def parse(self):
-        self.object = self.caller.search(self.args.lstrip(),quiet=True)
+        locs = [self.caller.location,self.caller]
+        locs.extend(self.caller.items.containers)
+        self.object = self.caller.search(self.args.lstrip(),quiet=True,
+            location = locs)
+        if hasattr(self.object,"__iter__"):
+            self.object = [*self.object]
         if isinstance(self.object,list):
             if len(self.object) > 0:
                 self.object = self.object[0]

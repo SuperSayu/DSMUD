@@ -123,8 +123,8 @@ class Stat:
         self.data = self.core.attributes.get(self.key,category="stats",
             default={"bonus":0,"exp":0,"stress":0} )
         self.col_key, self.row_key = AttributeToAspects(self.key) # I love python :)
-        self.col = self.core.stats[self.col_key]
-        self.row = self.core.stats[self.row_key]
+        self.col = self.core[self.col_key]
+        self.row = self.core[self.row_key]
         
     def _save(self):
         """

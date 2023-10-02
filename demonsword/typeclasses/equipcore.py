@@ -28,7 +28,7 @@ class EquipmentCore:
                         fast = item.fast_contents
                         more = len(sub) or len(fast)
                         withblock = ", with:" if more else ""
-                        onblock = "On your |y{item.slot}|n, a" if item.slot else "A"
+                        onblock = f"On your |y{item.slot}|n, a" if item.slot else "A"
                         self.parent.msg(f"{lead} {onblock} |w{item.get_display_name()}|n{withblock}")
                         if more:
                             if allow_sub:
@@ -54,9 +54,10 @@ class EquipmentCore:
         if l != None:
            self.parent.msg(f"* In your |yleft hand|n, a |w{l.get_display_name()}|n.")
         self.parent.msg("|/")
-    def pickup(self,item):
+    def pickup(self,item,silent=False):
         if not isinstance(item,Item) or not item.portable:
-            self.parent.msg(f"You can't get the {item}.")
+            if not silent:
+                self.parent.msg(f"You can't get the {item}.")
             return False
         if item.location == self:
             return False
@@ -72,8 +73,9 @@ class EquipmentCore:
             self.off_hand = item
             item.at_get(self.parent)
             return True
-        self.parent.msg("Your hands are full.")
-        return
+        if not silent:
+            self.parent.msg("Your hands are full.")
+        return False
     def drop(self,item):
         if item == self.main_hand:
            if not item.at_before_drop(self.parent):

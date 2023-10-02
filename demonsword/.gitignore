@@ -33,6 +33,7 @@ server/conf/secret_settings.py
 server/logs/*.log.*
 server/.static/*
 server/.media/*
+activate
 
 # Installer logs
 pip-log.txt
