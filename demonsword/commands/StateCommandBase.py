@@ -43,11 +43,11 @@ class StateCommand(Command):
             Running the command while already in this state will cancel it.
         """
         if self.caller.busy:
-            if self.caller.busy == self:
-                self.at_pre_state_cancel()
+            if type(self.caller.busy) == type(self):
+                self.caller.busy.at_pre_state_cancel()
                 return True
             else:
-                self.caller.msg(f"You are already busy {self.caller.busy.doing}.")
+                self.caller.msg(f"You are already busy |y{self.caller.busy.doing}|n.")
                 return True
         return None
     def func(self):

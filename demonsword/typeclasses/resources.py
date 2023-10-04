@@ -13,6 +13,7 @@ from random import choices
 from util.random import prob
 from evennia.utils.dbserialize import _SaverDict
 from .characters import Character
+from util.spawn import spawn
 
 class SpawnPicker:
     """
@@ -156,7 +157,7 @@ class ResourceNode(SpawnerObject):
             return True
         return result != None and result != []
     
-    def at_post_spawn(self,caller=None):
+    def at_post_spawn(self,caller=None,spawner=None):
         self.at_init()
         
     def at_init(self):
@@ -202,6 +203,11 @@ class ResourceNode(SpawnerObject):
                     print(f"> {self.resources[tier].show()}")
                 else:
                     print(f"> !MISSING")
+    def test_spawn(self,user=None,level=None):
+        if level == None:
+            level = self.nominal_tier
+        objs=self.random_spawn(user,level)
+        
     
     def random_spawn(self,user,result_tier):
         if not isinstance(result_tier,int):
@@ -215,7 +221,7 @@ class ResourceNode(SpawnerObject):
             raise IndexError("What?")
 
         result = spawner()
-        print(result)
+        print(f"{result}({type(result)}")
         if len(self.rare) > 0 and self.rare_chance > 0:
             if (result_tier >= self.nominal_tier and prob(self.rare_chance)) or (result_tier == self.max_tier and prob(self.rare_chance)):
                 nr=[]
@@ -239,8 +245,8 @@ class ResourceNode(SpawnerObject):
         
         if len(result) == 1 and (result[0] == None or result[0] == ""):
             return None
-        print(result)
-        return self.spawn(result,user) # see objects.dm for SpawnerObject.spawn
+        print(f"{result}({type(result)}")
+        return spawn(result, caller=user, spawner=self, location=self.location) # util.spawn.spawn()
 
 class Resource(Item):
     """

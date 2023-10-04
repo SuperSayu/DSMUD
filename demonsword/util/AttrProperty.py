@@ -43,21 +43,6 @@ def NAttributeDeller(key,cat=None):
     "Helper returns anonymous member function (?) deleting specific evennia non-persistent attribute"
     return lambda self: self.nattributes.remove(key,category=cat)
 
-"""class AttrDict:
-    owner   = None # owning object
-    proper  = None # Property to save/load to
-    cached  = None # Already saved data
-    def __init__(self,owner,key,data):
-        self.cached = data
-        self.owner=owner
-        self.proper = getattr(owner.__class__,key)
-    def __getitem__(self,index):
-        return self.cached[index]
-    def __setitem__(self,index,value):
-        self.cached[index]=value
-        setter=self.proper.fset # don't automatically set self
-        setter(self.owner,self.cached)"""
-
 class AttrProperty:
     """
     Property getter intended for Evennia attributes, with default values.
@@ -70,37 +55,26 @@ class AttrProperty:
     """
     getter          = None
     key             = None
- #   cached          = None
     default         = None
-    #default_cache   = None
     accept_none     = False
-    #cache_dicts     = True
-    def __init__(self,getter,default,accept_none=False,cache_dicts=True):
+    def __init__(self,getter,setter,default,accept_none=False:
         self.getter=getter
+        self.setter=setter
         self.default=default
         self.accept_none = accept_none# or (default==None)
-        #self.cache_dicts = cache_dicts
     def __call__(self,other):
         try:
-#            if self.cached: # dict thing
-#                return self.cached
             _ = self.getter(self=other)
             if _ == None:
                 if self.accept_none:
                     return _
-                #if isinstance(self.default,dict):
-                #    if self.default_cache == None:
-                #        handler = AttrDict(other,self.key,self.default)
-                #        if self.cache_dicts:
-                #            self.default_cache = handler
-                #        return handler
-                #    return self.default_cache
+                # Evennia has internal methods to keep lists and dicts synced with attributes
+                # For safety we will have to set the attribute immediately to make sure that
+                # any internal modifications are tracked.
+                if isinstance(self.default,dict) or isinstance(self.default,list):
+                    self.setter(self=other,value=self.default)
+                    return self.getter(self=other)
                 return self.default
-            #if isinstance(_,dict):
-            #    handler = AttrDict(other,self.key,_)
-            #    if self.cache_dicts:
-            #        self.cached = handler
-            #    return handler
             return _
         except AttributeError:
             return self.default
@@ -114,7 +88,7 @@ def AttributeProperty(key,default=None,category=None,fget=None,fset=None,fdel=No
     getter=fget or AttributeGetter(key,category)
     setter=fset or AttributeSetter(key,category,default)
     deller=fdel or AttributeDeller(key,category)
-    return property(AttrProperty(getter,default),setter,deller)
+    return property(AttrProperty(getter,setter,default),setter,deller)
 def NAttributeProperty(key,default=None,category=None,fget=None,fset=None,fdel=None):
     """
     Returns a property that calls anonymous member functions
@@ -124,7 +98,7 @@ def NAttributeProperty(key,default=None,category=None,fget=None,fset=None,fdel=N
     getter=fget or NAttributeGetter(key,category)
     setter=fset or NAttributeSetter(key,category)
     deller=fdel or NAttributeDeller(key,category)
-    return property(AttrProperty(getter,default),setter,deller)
+    return property(AttrProperty(getter,setter,default),setter,deller)
     
 def UpdateDefaults(superObject):
     """

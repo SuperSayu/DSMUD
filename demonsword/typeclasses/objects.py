@@ -41,17 +41,30 @@ class ObjectParent:
         You got a thing in me.
         """
         return
-    def at_post_spawn(self,caller):
+    def at_post_spawn(self,caller=None,spawner=None):
         """
         Called after an object is fully spawned by util.spawn.spawn()
-        or the spawn command.
+        or the overridden spawn command.  If a spawner object is passed
+        to spawn, this will be called after at_spawned_by().  This will
+        not be called if using the native evennia spawner func.
         """
         #print(f"Spawned {self}({self.__class__.__name__})")
         return
     
     def at_spawned_by(self,spawner=None,user=None):
         """
-        Called when a SpawnerObject spawns this item.
+        Called when spawned by another object.  If spawned with an
+        admin spawn command, or if the spawner keyword is not set in
+        a call to utils.spawn, or if the evennia spawner is used
+        instead, this will not be called.
+        """
+        return
+    def spawn_success(self,obj,caller=None):
+        """
+        Called if this object spawns another using util.spawn.spawn()
+        using the spawner keyword.  This is called before the object
+        receives at_spawned_by() and at_post_spawn().  This is called
+        individually per object spawned, not per batch.
         """
         return
         
@@ -68,7 +81,14 @@ class ObjectParent:
     
     def __init_subclass__(cls):
         """
-        Handle AttrProperty classes throughout the _thing.
+        This function override handles AttributeProperty objects.
+        If you redefine a class member where the original member
+        was an AttributeProperty and the new member is not,
+        the new member will be replaced with an AttributeProperty
+        and the value that would have overridden it is stored as
+        the default (used when no attribute exists).
+        
+        See util/AttrProperty.py for details.
         """
         UpdateDefaults(super())
         
@@ -224,7 +244,19 @@ class SpawnerObject(Object):
     SpawnerObjects are meant to simplify spawning stuff
     """
     giver = AttributeProperty("spawn_giver",False)
-    def spawn(self,proto_key,user=None):
+
+    def spawn_success(self,obj,caller):
+        #obj.location = self.location
+        if self.giver and isinstance(caller,DefaultObject):
+            check=caller.items.pickup(obj,silent=True)
+            if check:
+                caller.msg(f"You find a |w{obj}|n!  You pick it up.")
+            else:
+                caller.msg(f"You find a |w{obj}|n")
+            return
+        if caller:
+            caller.msg(f"You see a |w{obj}|n laying around.")
+"""    def spawn(self,proto_key,user=None):
         #self.source = PrototypeDB()
         #prototype = self.source[proto_key]
         
@@ -251,16 +283,4 @@ class SpawnerObject(Object):
             raise "SpawnerObject.spawn:what?"
             return []
         
-        return obj
-
-    def spawn_success(self,obj,user):
-        obj.location = self.location
-        if self.giver and isinstance(user,DefaultObject):
-            check=user.items.pickup(obj,silent=True)
-            if check:
-                user.msg(f"You find a |w{obj}|n!  You pick it up.")
-            else:
-                user.msg(f"You find a |w{obj}|n")
-            return
-        if user:
-            user.msg(f"You see a |w{obj}|n laying around.")
+        return obj"""

@@ -289,7 +289,7 @@ class EquipmentCore:
         self.parent.attributes.add("hand_l",item,category="equip")
         item.at_equip(self.parent,"hand_l")
         self.parent.msg(f"You {get_verb} the |w{item}|n{from_block} with your |yleft hand|n.")
-        if ol != self.parent:
+        if ol != self.parent and ol != None:
            ol.msg_contents("|w{person}|n {get_verb_pub} up the |w{item}|n{from_block}",mapping={"person":self.parent,"item":item,"get_verb_pub":get_verb_pub,"from_block":from_block},exclude=(self.parent) )
 # Right hand
     @property
@@ -320,7 +320,7 @@ class EquipmentCore:
         self.parent.attributes.add("hand_r",item,category="equip")
         item.at_equip(self.parent,"hand_r")
         self.parent.msg(f"You {get_verb} the |w{item}|n{from_block} with your |yright hand|n.")
-        if ol != self.parent:
+        if ol != self.parent and ol != None:
            ol.msg_contents("|w{person}|n {get_verb_pub} up the |w{item}|n{from_block}",mapping={"person":self.parent,"item":item,"get_verb_pub":get_verb_pub,"from_block":from_block},exclude=(self.parent) )
 # Backpack
     @property
