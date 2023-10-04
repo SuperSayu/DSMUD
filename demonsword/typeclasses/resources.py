@@ -16,19 +16,22 @@ from .characters import Character
 
 class SpawnPicker:
     """
-        Helper object that accepts a string, None, or formatted list.
-        When called, it will return a result specified by the origin.
+        Helper object that accepts a string, None, or formatted list or dict.
+        When called, it will return a random result from those options.
         If the input is:
         * "", [], {}, or 0:
             Returns [ None ]
         * string or [ string ]
             Return [ string ] 
         * [ stringA, stringB, ...]
-            Return random [ string] 
+            Return random [ string ] 
         * { stringA:weightA, stringB:weightB }
             Return random [ string ], weighted probability
         If the call function is passed a high count, this is repeated with replacement
-        as per random choices()
+        as per random choices(), eg, [ stringB, stringB, stringA ]
+        
+        If the string input is a comma separated list, the returned result will be
+        an array of strings with whitespace stripped.
     """
     def __init__(self, incoming):
         if incoming == 0 or len(incoming) == 0:
@@ -56,6 +59,36 @@ class SpawnPicker:
         #print(f"{incoming} -> {self.opts},{self.weights}")
     def __call__(self,count=1):
         return choices(self.opts,self.weights,k=count)
+    def detect_opt_error(self,i):
+        o = self.opts[i]
+        if isinstance(o,str):
+            return ""
+        if isinstance(o,list):
+            for x in o:
+                if not isinstance(x,str):
+                    return "! Non-string index {x}"
+            return ""
+        if o == 0 or o == None or o == {}:
+            return "! Improper none should be empty str"
+        return "! Unknown option format"
+    def detect_weight_error(self,i):
+        if not isinstance(i,int) and not isinstance(i,float):
+            return "! Non-number weight"
+        if i < 0:
+            return "! Negative weight"
+        return ""
+    def show(self):
+        if self.weights:
+            temp=[]
+            for i in range(0,len(self.opts)):
+                o = self.opts[i] or "<NONE>"
+                temp.append(f"{o}{self.detect_opt_error(i)}:{self.weights[i]}{self.detect_weight_error(i)}")
+            return f"Weighted [{','.join(temp)}]"
+        else:
+            temp=[]
+            for i in range(0,len(self.opts)):
+                temp.append(f"{self.opts[i]}{self.detect_opt_error(i)}")
+            return f"Unweighted [{','.join(temp)}]"
 
 class ResourceNode(SpawnerObject):
     """
@@ -70,28 +103,35 @@ class ResourceNode(SpawnerObject):
      or
     { tier: [ [ proto_key, weight], ... ], ... } for random weighted drop per tier
     
-    The active tier is the closest tier not higher than the result.
-    Proto keys with an empty string are a non-event.
+    Empty string proto keys are a non-event.  Unlisted tiers copy the next lower specified tier.
     Proto keys containing a comma will be split on commas and trimmed of whitespace.
     
     The rare and trash dicts translate common resource prototype keys into
     boosted or penalized versions of the same.  If the result is a list,
     it is treated identically as resource dict 
     """
-    skill_key = "forage"
-    nominal_tier = AttributeProperty("nominal_tier",2)
-    min_tier = AttributeProperty("min_tier",1)
-    max_tier = AttributeProperty("max_tier",3)
-    resdata=AttributeProperty("resources")
+    # new Attribute Properties
+    skill_key       = AttributeProperty("skill_key","forage")
+    min_tier        = AttributeProperty("min_tier",1)
+    nominal_tier    = AttributeProperty("nominal_tier",2)
+    max_tier        = AttributeProperty("max_tier",3)
+    
+    resdata         = AttributeProperty("resources",{})     # Resource dict per SpawnPicker
+    rare_chance     = AttributeProperty("rare_chance",0)    # Chance of mutation, only if meeting nominal tier, more if max tier
+    raredata        = AttributeProperty("rare",{})          # commonkey:rarekey dict
+    trash_chance    = AttributeProperty("trash_chance",0)   # Chance of mutation, only if below nominal tier, more if min tier
+    trashdata       = AttributeProperty("trash",{})         # commonkey:trashkey dict
+    seen_by         = AttributeProperty("seen_by",[])       # Forage: force resource searchers to find a node first
+    finished_prob   = AttributeProperty("finished_prob",15) # Forage: exhaust nodes, per searcher
+    # Changed Attribute Properties
+    giver = True # tc/objects:SpawnerObject
+    
+    # Pure pythonic variables
+    # These are used to hold SpawnPickers
     resources={}
-    rare_chance = AttributeProperty("rare_chance",0)
-    rare=AttributeProperty("rare",{})
-    trash_chance=AttributeProperty("trash_chance",0)
-    trash=AttributeProperty("trash",{})
-    seen_by=AttributeProperty("seen_by",[])
-    finished_prob = AttributeProperty("finished_prob",15)
-    parsed=None
-    giver = True
+    rare = {}
+    trash = {}
+    
     
     def seen(self,user):
         if user != None:
@@ -116,14 +156,52 @@ class ResourceNode(SpawnerObject):
             return True
         return result != None and result != []
     
+    def at_post_spawn(self,caller=None):
+        self.at_init()
+        
     def at_init(self):
+        if len(self.resources):
+            self.resources={}
+            self.rare={}
+            self.trash={}
+        if len(self.resdata) == 0: # Attributes not yet loaded or nothing to initialize
+            return
         for tier,opts in self.resdata.items():
             self.resources[int(tier)] = SpawnPicker(opts)
         lr = None
         for tier in range(self.min_tier,self.max_tier+1):
             if not tier in self.resources:
                 self.resources[tier] = lr or SpawnPicker("")
+            else:
+                lr = self.resources[tier]
+        for key,result in self.raredata.items():
+            self.rare[key]=SpawnPicker(result)
+        for key,result in self.trashdata.items():
+            self.trash[key]=SpawnPicker(result)
 
+    def test(self):
+        print(f"{self}({self.__class__.__name__}) self-test:")
+        lt=-1
+        for tier in range(self.min_tier,self.max_tier+1):
+            exists=(tier in self.resources)
+            isnew=False
+            s=str(tier)
+            if s in self.resdata.keys():
+                isNew = True
+                lt = tier
+                print(f"[At tier {tier}]")
+                print(f"> From {self.resdata[s]}")
+                if exists:
+                    print(f"> {self.resources[tier].show()}")
+                else:
+                    print(f"> !MISSING")
+            else:
+                print(f"[At tier {tier}]")
+                print(f"> Inherited")
+                if exists:
+                    print(f"> {self.resources[tier].show()}")
+                else:
+                    print(f"> !MISSING")
     
     def random_spawn(self,user,result_tier):
         if not isinstance(result_tier,int):

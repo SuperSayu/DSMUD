@@ -91,5 +91,6 @@ class PrototypeDB:
                         continue
                     if self.validate(f,k,v):
                         v["prototype_key"]=k
+                        #v["exec"]=["obj.at_post_spawn()"] #does get loaded but doesn't work?
                         load_module_prototypes(v)
                         self.loaded.append(f"> {k}")

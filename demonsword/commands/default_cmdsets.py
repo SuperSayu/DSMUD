@@ -20,6 +20,7 @@ from .rest import RestCommand,TrainCommand,MeditateCommand,SleepCommand,ResetSta
 from .stat_skill import StatsCommand,SkillsCommand
 from .StateCommandBase import StopCommand
 from .get_override import GetCommand,DropCommand,InventoryCommand,SwapHandsCommand,PutCommand,WearCommand,RemoveCommand,LookInCommand
+from .CustomSpawn import SpawnCommand
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -35,6 +36,16 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         Populates the cmdset
         """
         super().at_cmdset_creation()
+        
+        # Inventory commands
+        self.add(GetCommand())
+        self.add(DropCommand())
+        self.add(PutCommand())
+        self.add(WearCommand())
+        self.add(RemoveCommand())
+        self.add(InventoryCommand())
+        self.add(LookInCommand())
+        self.add(SwapHandsCommand())
         
         #
         # Character self-examination
@@ -56,15 +67,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(SleepCommand())
         self.add(ResetStatsCommand())
         
-        # Inventory commands
-        self.add(GetCommand())
-        self.add(DropCommand())
-        self.add(PutCommand())
-        self.add(WearCommand())
-        self.add(RemoveCommand())
-        self.add(InventoryCommand())
-        self.add(LookInCommand())
-        self.add(SwapHandsCommand())
+        self.add(SpawnCommand())
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):

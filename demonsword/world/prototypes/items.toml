@@ -2,28 +2,48 @@
 
 # Equipment
 [backpack]
-    key="backpack"
     typeclass="typeclasses.storage_object.Backpack"
 	prototype_desc = "A basic backpack."
+	key="backpack"
+	desc="A cloth satchel meant to be slung over your shoulder."
 [belt]
-	key="belt"
 	typeclass="typeclasses.storage_object.Belt"
+	prototype_desc = "A belt, for carrying belt items."
+	key="belt"
+	desc="A leather strap that attaches to itself.  You can sling it around your waist and attach things to it."
 [beltpouch]
-	key="pouch"
 	typeclass="typeclasses.storage_object.BeltStorage"
+	prototype_desc = "A pouch for attaching to belts."
+	key="pouch"
+	desc="A small pouch with a hook for attaching to your belt."
 [scabbard]
-	key="scabbard"
 	typeclass="typeclasses.storage_object.BeltScabbard"
+	prototype_desc="Basic scabbard, hangs on belt, holds swords."
+	key="scabbard"
+	desc = "A sword scabbard with a hook for attaching to your belt."
+[shirt]
+	typeclass="typeclasses.item.Shirt"
+	prototype_desc="Basic shirt"
+	key="shirt"
+	desc = "A plain cloth shirt, needed to eat at fancy restaurants."
+[pants]
+	typeclass="typeclasses.item.Pants"
+	prototype_desc="Basic pants"
+	key="pants"
+	desc="Plain cloth pants, miraculously in your size."
 
 [trashcan]
-	key="trash can"
 	typeclass="typeclasses.storage_object.Destroyer"
+	prototype_desc="Destroys any item placed inside, for debug use."
+	key="trash can"
+	desc="Automagic trash disposal unit.  Place things inside to immediately destroy them."
 	portable=false
 
 # Resources
 [berries]
-	key="$choice('blue','black','red','sour','green')berries"
 	typeclass="typeclasses.resources.Resource"
+	prototype_desc="test resource"
+	key="$choice('blue','black','red','sour','green')berries"
 	quality= { "randint"= [ 1, 10] }
 [rotberries]
 	prototype_parent="berries"
@@ -34,8 +54,9 @@
 	key="magic $choice('blue','black','red','sour','green')berries"
 	quality=10
 [stick]
-	key="stick"
 	typeclass="typeclasses.resources.Resource"
+	prototype_desc="test resource"
+	key="stick"
 	quality= { "randint" = [ 1, 5 ] }
 [stickystick]
 	prototype_parent="stick"
@@ -48,16 +69,16 @@
 
 
 [berrybush]
-	key = "berry bush"
 	typeclass="typeclasses.resources.ResourceNode"
+	prototype_desc="Test resource node: sticks and berries @2/0-3."
+	key = "berry bush"
 	min_tier = 0
 	max_tier = 3
 	nominal_tier = 2
 	rare_chance = 5
 	trash_chance = 35
 	[berrybush.resources]
-		0 = { stick = 15, "" = 85 }
-		1 = { stick = 35, berries=15, "" = 60 }
+		0 = { stick = 35, berries=15, "" = 50 }
 		2 = { stick = 35, berries=50, "" = 15 }
 		3 = "berries"
 	[berrybush.rare]

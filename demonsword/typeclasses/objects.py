@@ -12,7 +12,8 @@ inheritance.
 """
 from evennia.objects.objects import DefaultObject
 from util.AttrProperty import AttributeProperty,UpdateDefaults
-from evennia.prototypes import spawner
+#from evennia.prototypes.spawner import spawn
+from util.spawn import spawn
 #from .characters import Character
 
 class ObjectParent:
@@ -40,10 +41,17 @@ class ObjectParent:
         You got a thing in me.
         """
         return
-    def spawned_by(self,spawner=None,user=None):
+    def at_post_spawn(self,caller):
         """
-        Called automatically when a SpawnerObject spawns this item.
-        May also be called in other circumstances.
+        Called after an object is fully spawned by util.spawn.spawn()
+        or the spawn command.
+        """
+        #print(f"Spawned {self}({self.__class__.__name__})")
+        return
+    
+    def at_spawned_by(self,spawner=None,user=None):
+        """
+        Called when a SpawnerObject spawns this item.
         """
         return
         
@@ -224,9 +232,9 @@ class SpawnerObject(Object):
             return []
         
         if isinstance(proto_key,str):
-            obj = spawner.spawn(proto_key)
+            obj = spawn(proto_key,caller=user)
         elif isinstance(proto_key,list):
-            obj = spawner.spawn(*proto_key)
+            obj = spawn(*proto_key,caller=user)
         
         
         if isinstance(obj,list):

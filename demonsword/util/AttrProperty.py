@@ -43,7 +43,7 @@ def NAttributeDeller(key,cat=None):
     "Helper returns anonymous member function (?) deleting specific evennia non-persistent attribute"
     return lambda self: self.nattributes.remove(key,category=cat)
 
-class AttrDict:
+"""class AttrDict:
     owner   = None # owning object
     proper  = None # Property to save/load to
     cached  = None # Already saved data
@@ -56,7 +56,7 @@ class AttrDict:
     def __setitem__(self,index,value):
         self.cached[index]=value
         setter=self.proper.fset # don't automatically set self
-        setter(self.owner,self.cached)
+        setter(self.owner,self.cached)"""
 
 class AttrProperty:
     """
@@ -70,37 +70,37 @@ class AttrProperty:
     """
     getter          = None
     key             = None
-    cached          = None
+ #   cached          = None
     default         = None
-    default_cache   = None
+    #default_cache   = None
     accept_none     = False
-    cache_dicts     = True
+    #cache_dicts     = True
     def __init__(self,getter,default,accept_none=False,cache_dicts=True):
         self.getter=getter
         self.default=default
-        self.accept_none = accept_none or (default==None)
-        self.cache_dicts = cache_dicts
+        self.accept_none = accept_none# or (default==None)
+        #self.cache_dicts = cache_dicts
     def __call__(self,other):
         try:
-            if self.cached: # dict thing
-                return self.cached
+#            if self.cached: # dict thing
+#                return self.cached
             _ = self.getter(self=other)
             if _ == None:
                 if self.accept_none:
                     return _
-                if isinstance(self.default,dict):
-                    if self.default_cache == None:
-                        handler = AttrDict(other,self.key,self.default)
-                        if self.cache_dicts:
-                            self.default_cache = handler
-                        return handler
-                    return self.default_cache
+                #if isinstance(self.default,dict):
+                #    if self.default_cache == None:
+                #        handler = AttrDict(other,self.key,self.default)
+                #        if self.cache_dicts:
+                #            self.default_cache = handler
+                #        return handler
+                #    return self.default_cache
                 return self.default
-            if isinstance(_,dict):
-                handler = AttrDict(other,self.key,_)
-                if self.cache_dicts:
-                    self.cached = handler
-                return handler
+            #if isinstance(_,dict):
+            #    handler = AttrDict(other,self.key,_)
+            #    if self.cache_dicts:
+            #        self.cached = handler
+            #    return handler
             return _
         except AttributeError:
             return self.default
