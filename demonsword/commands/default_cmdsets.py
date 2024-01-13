@@ -21,6 +21,7 @@ from .stat_skill import StatsCommand,SkillsCommand
 from .StateCommandBase import StopCommand
 from .get_override import GetCommand,DropCommand,InventoryCommand,SwapHandsCommand,PutCommand,WearCommand,RemoveCommand,LookInCommand
 from .CustomSpawn import SpawnCommand
+from .SceneCommand import SceneCommand
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -68,6 +69,9 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(ResetStatsCommand())
         
         self.add(SpawnCommand())
+        
+        # This is still in testing/creation phase
+        self.add(SceneCommand())
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):

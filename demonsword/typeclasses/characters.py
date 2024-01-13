@@ -43,7 +43,7 @@ class Character(ObjectParent, DefaultCharacter):
     @lazy_property
     def stats(self):
         if self.db.statcore == None:
-            self.db.statcore = create_object("statcore.StatCore", key="(internal:statcore)", location=self, home=self)
+            self.db.statcore = create_object("statcore.StatCore", key=f"({self.key}.statcore)", location=self, home=self)
         return self.db.statcore
         #return StatCore(self)
     @lazy_property
@@ -77,3 +77,5 @@ class Character(ObjectParent, DefaultCharacter):
     def busy(self,b):
         self.ndb.busy = b
 
+    def Cooldown(self):
+        self.skills.Cooldown()

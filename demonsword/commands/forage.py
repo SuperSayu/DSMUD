@@ -15,9 +15,9 @@ class ForageCommand(StateCommand):
     skillName="forage"
     doing = "foraging"
     skillKey="forage"
-    checkTier = 2
-    minCheck = 1
-    maxCheck = 3
+    checkTier = 5
+    minCheck = 4
+    maxCheck = 7
     
     def state_start(self):
         room = self.caller.location
@@ -49,7 +49,7 @@ class ForageCommand(StateCommand):
         
     def check_failure(self,skill,result, boost):
         if self.source:
-            if self.source.seen(self.caller):
+            if self.source.Seen(self.caller):
                 self.caller.msg(f"You |y{self.skillName}|n at the |w{self.source}|n and find nothing useful.")
             else:
                 self.caller.msg(f"You |y{self.skillName}|n around and find nothing.")
@@ -67,9 +67,9 @@ class ForageCommand(StateCommand):
     
     def state_continue(self):
         if self.source:
-            self.caller.skills.Check(self.skillKey,self.source.nominal_tier,self.source.min_tier,self.source.max_tier,success_func=self.check_success,fail_func=self.check_failure)
+            self.caller.skills.Check(self.skillKey, self.source.nominal_tier,self.source.min_tier,self.source.max_tier, success_func=self.check_success,fail_func=self.check_failure)
         else:
-            self.caller.skills.Check(self.skillKey,self.checkTier,self.minCheck,self.maxCheck,success_func=self.check_success,fail_func=self.check_failure)
+            self.caller.skills.Check(self.skillKey, self.checkTier,self.minCheck,self.maxCheck, success_func=self.check_success,fail_func=self.check_failure)
         self.sleep(randint(1,3))
     def state_cancel(self):
         self.caller.msg(f"You stop {self.doing}.\n\n")

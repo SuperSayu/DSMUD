@@ -13,7 +13,7 @@ just overloads its hooks to have it perform its function.
 """
 
 from evennia.scripts.scripts import DefaultScript
-
+from .characters import Character
 
 class Script(DefaultScript):
     """
@@ -90,3 +90,16 @@ class Script(DefaultScript):
     """
 
     pass
+
+# Todo: This is probably better as a smaller script on individual characters
+# Calling this a temporary measure for now
+class GlobalCooldownScript(Script):
+    interval = 5 # seconds
+    persistent = True
+    start_delay = True
+    repeats=0
+    
+    def at_repeat(self):
+        for c in Character.objects.all():
+            c.msg("Cooldown")
+            c.Cooldown()

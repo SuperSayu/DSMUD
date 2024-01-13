@@ -23,21 +23,23 @@ class EquipmentCore:
                 if i == None:
                     continue
                 if i.container:
-                    def sub_show(item, lead="*", allow_sub=True,):
+                    def sub_show(item, lead="> ", allow_sub=True,):
                         sub = item.sub_containers
                         fast = item.fast_contents
                         more = len(sub) or len(fast)
                         withblock = ", with:" if more else ""
-                        onblock = f"On your |y{item.slot}|n, a" if item.slot else "A"
-                        self.parent.msg(f"{lead} {onblock} |w{item.get_display_name()}|n{withblock}")
+                        onblock = f"* On your |y{item.slot}|n, a" if item.slot else f"{lead}A"
+                        self.parent.msg(f"{onblock} |w{item.get_display_name()}|n{withblock}")
                         if more:
                             if allow_sub:
                                 for s in sub:
-                                    sub_show(s," "+lead,allow_sub=False)
+                                    sub_show(s,"- "+lead,allow_sub=False)
                             for f in fast:
                                 if f in sub and allow_sub:
                                     continue
-                                self.parent.msg(f" {lead} A |w{f.get_display_name()}|n")
+                                if f.location != item:
+                                    continue
+                                self.parent.msg(f"- {lead} A |w{f.get_display_name()}|n")
                     sub_show(i)
                     
                 else:
@@ -61,7 +63,7 @@ class EquipmentCore:
             return False
         if item.location == self:
             return False
-        if not item.access(self,access_tye="get",default=True):
+        if not item.access(self,access_type="get",default=True):
             return False
         if not item.at_before_get(self.parent):
             return False

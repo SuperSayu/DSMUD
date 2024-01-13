@@ -7,8 +7,9 @@
 """
 
 from .item import Item
-from .objects import Object,SpawnerObject
-from util.AttrProperty import AttributeProperty
+from .objects import Object
+from .SceneObject import SpawnerObject
+from util.AttributeProperty import AttributeProperty
 from random import choices
 from util.random import prob
 from evennia.utils.dbserialize import _SaverDict
@@ -111,19 +112,24 @@ class ResourceNode(SpawnerObject):
     boosted or penalized versions of the same.  If the result is a list,
     it is treated identically as resource dict 
     """
+    LongSceneVars=["desc","seen_desc","unseen_desc"] # these are used by the Scene verb for viewing and editing
     # new Attribute Properties
-    skill_key       = AttributeProperty("skill_key","forage")
-    min_tier        = AttributeProperty("min_tier",1)
-    nominal_tier    = AttributeProperty("nominal_tier",2)
-    max_tier        = AttributeProperty("max_tier",3)
+    skill_key       = AttributeProperty("forage")
+    min_tier        = AttributeProperty(1)
+    nominal_tier    = AttributeProperty(2)
+    max_tier        = AttributeProperty(3)
     
-    resdata         = AttributeProperty("resources",{})     # Resource dict per SpawnPicker
-    rare_chance     = AttributeProperty("rare_chance",0)    # Chance of mutation, only if meeting nominal tier, more if max tier
-    raredata        = AttributeProperty("rare",{})          # commonkey:rarekey dict
-    trash_chance    = AttributeProperty("trash_chance",0)   # Chance of mutation, only if below nominal tier, more if min tier
-    trashdata       = AttributeProperty("trash",{})         # commonkey:trashkey dict
-    seen_by         = AttributeProperty("seen_by",[])       # Forage: force resource searchers to find a node first
-    finished_prob   = AttributeProperty("finished_prob",15) # Forage: exhaust nodes, per searcher
+    resdata         = AttributeProperty({},key="resources")     # Resource dict per SpawnPicker
+    rare_chance     = AttributeProperty(0)    # Chance of mutation, only if meeting nominal tier, more if max tier
+    raredata        = AttributeProperty({},key="rare")          # commonkey:rarekey dict
+    trash_chance    = AttributeProperty(0)   # Chance of mutation, only if below nominal tier, more if min tier
+    trashdata       = AttributeProperty({},key="trash")         # commonkey:trashkey dict
+    seen_by         = AttributeProperty([])       # Forage: force resource searchers to find a node first
+    finished_prob   = AttributeProperty(15) # Forage: exhaust nodes, per searcher
+
+    seen_desc       = AttributeProperty("") # Background text for if this resource node has been discovered
+    unseen_desc     = AttributeProperty("") # Background text for if this resource node has not been discovered.
+    
     # Changed Attribute Properties
     giver = True # tc/objects:SpawnerObject
     
@@ -134,9 +140,19 @@ class ResourceNode(SpawnerObject):
     trash = {}
     
     
-    def seen(self,user):
+
+    def get_background_desc(self, looker, **kwargs):
+        if not self.access(looker,"bgview") or self.invisible:
+            return ""
+        if self.Seen(looker):
+            return self.seen_desc
+        else:
+            return self.unseen_desc
+
+    def Seen(self,user):
         if user != None:
-            return self.seen_by.count(user.dbref)
+            return self.seen_by.count(user.dbref) > 0
+        return False
     
     def forage(self,user,skill,result):
         if not isinstance(user,Character):
@@ -221,7 +237,6 @@ class ResourceNode(SpawnerObject):
             raise IndexError("What?")
 
         result = spawner()
-        print(f"{result}({type(result)}")
         if len(self.rare) > 0 and self.rare_chance > 0:
             if (result_tier >= self.nominal_tier and prob(self.rare_chance)) or (result_tier == self.max_tier and prob(self.rare_chance)):
                 nr=[]
@@ -245,10 +260,10 @@ class ResourceNode(SpawnerObject):
         
         if len(result) == 1 and (result[0] == None or result[0] == ""):
             return None
-        print(f"{result}({type(result)}")
         return spawn(result, caller=user, spawner=self, location=self.location) # util.spawn.spawn()
 
 class Resource(Item):
+    _content_types = ("object","item","resource",)
     """
         A Resource object is specifically something intended for crafting or selling.
         Resources are tagged by type and quality and may later have other stuff for stuff.
@@ -262,5 +277,5 @@ class Resource(Item):
         a marble-type stone rose with added fire.magma bonus essence.  Rare subtypes
         can be used as though they were a standard resource of that type.
     """
-    quality=AttributeProperty("quality",50)
+    quality=AttributeProperty(50)
     pass

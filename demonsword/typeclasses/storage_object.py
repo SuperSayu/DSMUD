@@ -2,15 +2,17 @@
     Storage mixin: Facilities for one Object storing others
 """
 from .item import Item,Equipment
-from util.AttrProperty import AttributeProperty
+from util.AttributeProperty import AttributeProperty
+from .SceneObject import SceneObject
 
 class Storage(Equipment):
+    _content_types = ("object","item","equip","storage",) 
     # old properties
     container=True  # ObjectParent
     size = 2        # Item 
     # new properties
-    open     = AttributeProperty("open",True)
-    max_size = AttributeProperty("max_size",1)
+    open     = AttributeProperty(True)
+    max_size = AttributeProperty(1)
     
     def open_container(self):
         self.open = True
@@ -28,9 +30,16 @@ class Storage(Equipment):
         if not self.container or not self.open or not incoming.portable:
             return False
         return self.fit_check(incoming)
+    def at_item_receive(self,incoming,slot=""):
+        """
+        You got a thing in me.
+        """
+        incoming.last_container = self
 
-class Destroyer(Storage):
+class Destroyer(SceneObject,Storage):
+    _content_types = ("object","scene",)
     max_size = 999
+    portable = False
     def at_init(self):
         for obj in self.contents:
             obj.delete()
@@ -51,7 +60,7 @@ class Belt(Storage):
     wear_slot="belt"
     max_size = 2
     size = 2
-    max_slots = AttributeProperty("max_slots",5)
+    max_slots = AttributeProperty(5)
     def fit_check(self,incoming):
         if len(self.contents) >= self.max_slots:
             return False

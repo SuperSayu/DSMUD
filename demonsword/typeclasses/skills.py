@@ -8,6 +8,7 @@
 from evennia.objects.objects import DefaultObject
 from .objects import ObjectParent
 from util.random import roll,show_roll
+from util.AttributeProperty import AttributeProperty,SubProperty
 from .attr_aspect import AttributeList,AspectList,StatGrid,StatNames
 from random import randint
 from evennia.utils.evmenu import get_input # caller, prompt, callback, *args, **kwargs
@@ -89,21 +90,50 @@ def link_skill_aspect_callback(caller,prompt,response,skill,yes_opt):
     skill.affinity_up()
     caller.skills.training = None
 
+skill_default = lambda _s,_i,_a,key: {"key":key,"stat":None,"aspect":None,"exp":0.0,"streak":0,"effort":0,"training":0,"affinity":0,"mastery":0}
+
+# data = SA() -> packed data avaialble for standard SubProperty()
+class SkillAttribute(AttributeProperty):
+    _attr_get_source = lambda _, instance: instance.parent.attributes
+    _key_get = lambda _,instance: instance.key
+    _data_default = skill_default
+    _category="skills"
+
+class SkillStatSubProperty(SubProperty):
+    pass
+
+# x = SFSP() -> skill.x == skill.flavor["x"]
+class SkillFlavorSubProperty(SubProperty):
+    _data_access = lambda _,instance: instance.flavor
+
 class Skill:
-    parent      = None
-    key         = ""
-    data        = None
+    parent      = None  # Character
+    key         = ""    # Skill unique identifier
     choosing    = False
+    
+    flavor      = None  # -> skilldb[key]
+    name        = SkillFlavorSubProperty()
+    doing       = SkillFlavorSubProperty()
+    desc        = SkillFlavorSubProperty()
+
+    data        = SkillAttribute() # packed data stored in attribute dict()
+    exp         = SubProperty()
+    streak      = SubProperty()
+    effort      = SubProperty()
+    training    = SubProperty()
+    affinity    = SubProperty()
+    mastery     = SubProperty()
+    
+    stat        = SubProperty()
+    aspect      = SubProperty()
+    
 
 #region internals    
-    def __init__(self, character, key, data=None):
+    def __init__(self, character, key):#, data=None):
         self.parent = character
         self.key = key
-        if data == None:
-            self._load()
-        else: # Override used when the skill core needs to pull all skills, no use redoing queries
-            self.data = data
-            self.flavor = skilldb[self.key]
+        self.flavor = skilldb[self.key]
+    
     def exp_fraction(self,f):
         simple={1:"⅞",7/8:"¾",3/4:"⅝",5/8:"½",1/2:"⅜",3/8:"¼",1/4:"⅛",1/8:""}
         while len(simple):
@@ -118,51 +148,74 @@ class Skill:
         if x == i:
             return i.__str__()
         return f"{i}{self.exp_fraction(x-i)}"
-        
+    def streak_str(self):
+        x = self.streak
+        i = int(x)
+        if x == i:
+            return i.__str__()
+        return f"{i}{self.exp_fraction(x-i)}"
     def __str__(self): # todo pretty print
         v=" |C|||n "
         return v.join([
             f"|w{self.name}|n".rjust(14),
             self.exp_str().center(5),
-            self.effort.__str__().center(5),
-            self.training.__str__().center(5),
-            self.affinity.__str__().center(5),
-            self.mastery.__str__().center(5)
+            str(self.EV).center(5),
+            str(self.statValue).center(5),
+            f"{self.streak_str()}/{self.effort}".center(5),
+            str(self.training).center(5),
+            str(self.affinity).center(5),
+            str(self.mastery).center(5)
         ])
-    def _save(self):
-        self.parent.attributes.add(self.key,self.data,category="skills")
-    def _load(self):
-        self.data = self.parent.attributes.get(self.key,category="skills",default={"key":self.key,"stat":None,"aspect":None,"exp":0.0,"effort":0,"training":0,"affinity":0,"mastery":0})
-        self.flavor = skilldb[self.key]
-        # todo: lookup tags on first set
     def _reset(self):
         self.parent.attributes.remove(self.key,category="skills")
-        self._load()
+        del self.parent.skills[self.key]
 #endregion
 
-    def roll(self,max_aff = -1, show=False):
+    def Cooldown(self):
+        if self.streak > 0:
+            self.streak -= 1
+            if self.streak == 0:
+                self.parent.msg(f"Your {self} skill has completely cooled down.")
+        
+    def roll(self,active=2,show=False):
         """
             Roll the skill.  The maximum tier of the skill check caps your affinity.
             Any stats above your training value are turned into Brute dice.
         """
-        stat = self.statValue
-        aff = self.data["affinity"]
-        if max_aff > 0:
-            aff = min( aff, max_aff )
+        streak = int(self.streak)
+        mas = self.mastery  # d12: 25% 0, 33% 1, 33% 2, 8% 3 
+        aff = self.affinity # d10: 30% 0, 40% 1, 30% 2 
+        trn = self.training #  d8: 37% 0, 50% 1, 13% 2
+        stat = self.statValue   # d6: 50% 0, 50% 1
+        eff = min(self.effort,streak)  # d4: 75% 0, 25% 1        
+        
+        # If you are rolling a standby or inactive skill, some dice are penalized
+        stat_brute = 0  # Brute: 50% -1, 50% +1
+        aff_slip = 0    #  Slip: 30% -1, 40% +1, 30% +2
+        
+        if active < 2:
+            if stat > momentum:
+                stat_brute = stat - momentum
+                stat = momentum
+        if active == 0:
+            eff = 0
+            if aff > momentum:
+                aff_slip = aff - momentum
+                aff = momentum
         
         # Penalize stats above your training
-        trn = self.data["training"]
+        
         brute = 0
         if stat > trn + 1:
             brute = stat - trn - 1
             stat = trn + 1
         if show:
-            return show_roll(self.parent,self.name,d4=self.data["effort"], d6=stat, d8=self.data["training"],d10=aff,d12=self.data["mastery"],brute=brute)
+            return show_roll(self.parent,self.name,d4=eff, d6=stat, d8=trn,d10=aff,d12=mas,brute=stat_brute,slip=aff_slip)
         else:
-            return roll(d4=self.data["effort"], d6=stat, d8=self.data["training"],d10=aff,d12=self.data["mastery"],brute=brute)
+            return roll(d4=eff, d6=stat, d8=trn,d10=aff,d12=mas,brute=stat_brute,slip=aff_slip)
             
 
-    def Check(self,tier = 1, min_tier = -1, max_tier = -1, *, show=True,do_practice=True, success_func=None, fail_func=None, **data ):
+    def Check(self,tier = 1, min_tier = -1, max_tier = -1, *, active=2,show=True,do_practice=True, success_func=None, fail_func=None, **data ):
         """
             Perform a skill check, DC 1 + 2*tier.
             If the check fails but would succeed at a lower tier,
@@ -175,16 +228,10 @@ class Skill:
         if max_tier == -1:
             max_tier = tier
         challenge = 1 + 2 * tier
-        result = self.roll(max_tier,show=True)
+        result = self.roll(active=active,show=True)
         result_tier = (result-1)//2
         if do_practice:
             self.practice(abs(result - challenge))
-        if result < 1: # Hard minimum, no matter the min tier.  This might be negative with brute stats!
-            if fail_func != None:
-                #self.parent.msg(f"Hard fail {result}:{result_tier} ({min_tier}-{tier}-{max_tier})")
-                fail_func(self,result_tier,tier - result_tier,**data)
-            return -1
-        
         boost = 0
         if result_tier < min_tier:
             if fail_func != None:
@@ -192,50 +239,10 @@ class Skill:
                 fail_func(self,result_tier,result_tier - tier,**data)
         elif success_func != None:
             boost = min(result_tier - tier, max_tier)
-            #if boost < 0:
-                #self.parent.msg(f"Penalty {boost}; {result}:{result_tier} ({min_tier}-{tier}-{max_tier})")
-            #else:
-                #self.parent.msg(f"Boost {boost}; {result}:{result_tier} ({min_tier}-{tier}-{max_tier})")
             success_func(self,result_tier, boost, **data)
         return result_tier
 
 #region properties    
-    @property
-    def exp(self):
-        return self.data["exp"]
-    @exp.setter
-    def exp(self,e):
-        self.data["exp"]=e
-        #self._save()
-    @property
-    def name(self):
-        return self.flavor["name"]
-    @property
-    def doing(self):
-        return self.flavor["doing"]
-    @property
-    def desc(self):
-        return self.flavor["desc"]
-    @property
-    def effort(self):
-        return self.data["effort"]
-    @effort.setter
-    def effort(self,e):
-        self.data["effort"]=e
-        #self._save()
-    @property
-    def training(self):
-        return self.data["training"]
-    @training.setter
-    def training(self,t):
-        self.data["training"]=t
-        #self._save()
-    @property
-    def stat(self):
-        return self.data["stat"]
-    @stat.setter
-    def stat(self,s):
-        self.data["stat"]=s
     @property
     def statValue(self):
         if self.stat == None:
@@ -252,26 +259,6 @@ class Skill:
             return 0
         return sv - t
     
-    @property
-    def aspect(self):
-        return self.data["aspect"]
-    @aspect.setter
-    def aspect(self,a):
-        self.data["aspect"]=a
-        #self._save()
-    @property
-    def affinity(self):
-        return self.data["affinity"]
-    @affinity.setter
-    def affinity(self,a):
-        self.data["affinity"]=a
-        #self._save()
-    @property
-    def mastery(self):
-        return self.data["mastery"]
-    @mastery.setter
-    def mastery(self,m):
-        self.data["mastery"]=m
     @property
     def can_rest(self):
         return self.exp >= (self.effort + 2)
@@ -298,7 +285,10 @@ class Skill:
 
         The more dice you have, the more you will trend towards your EV (sharper bell curve).
         """
-        return int( self.practice*0.25 + (self.statValue - self.statBrute)*0.5 + self.training * 0.75 + self.affinity + self.mastery * 1.25 )
+        x=self.effort*0.25 + (self.statValue - self.statBrute)*0.5 + self.training * 0.75 + self.affinity + self.mastery * 1.25
+        i=int(x)
+        s= "+" if i>=0 else "-"
+        return f"{s}{i}{self.exp_fraction(x-i)}"
 #endregion properties
   
 #region advancement
@@ -307,6 +297,7 @@ class Skill:
         # You get more exp if you are close to the target difficulty
         # Practicing a skill with wide min-max tiering is not necessarily good for xp
         amt = (self.affinity + 1) * round(pow(SKILL_PRACTICE_COEFFICIENT,amt),4)
+        self.streak = min(self.effort, self.streak + amt)
         if amt < 0.01 or self.can_rest:
             return
             
@@ -317,14 +308,13 @@ class Skill:
         if newbase > base:
             if self.can_rest:
                 self.exp = newbase # In case we reach maximum, truncate to integer
-                self.parent.msg("Your skill feels full.  You should rest for a while.")
+                self.parent.msg(f"|CYour |w{self.name} skill|C feels full.  You should |yrest|C for a while.|n")
             else:
                 self.parent.msg("Your skill feels more experienced.")
         else:
             #debug print
             #self.parent.msg(f"Gained {amt} skill xp")
             pass
-        self._save()
         if self.stat != None:
             self.parent.stats[self.stat].Exercise(self,amt)
         
@@ -332,7 +322,6 @@ class Skill:
         if not self.can_rest:
             return
         self.effort_up()
-        self._save()
     def Sleep(self):
         self.Rest()
     def Meditate(self):
@@ -343,14 +332,13 @@ class Skill:
                 # if self.can_master
                 self.parent.msg(f"After all the work you've put into {self.name}, you feel you need to meditate and search your soul to figure out what you need to do to get better.  You won't be able to train until you have cleared your mind.")
                 return
-            self.parent.msg(f"You have learned all you can about {self.name}ing by effort alone.  You need to find a trainer.")
+            self.parent.msg(f"|CYou have learned all you can about |y{self.doing}|C by effort alone.  You need to find a |ytrainer|C.|n")
             return
             #self.train_up()
         else:
-            self.parent.msg(f"Your efforts with the {self.name} skill have borne fruit.  You can now practice it better.")
+            self.parent.msg(f"|CYour efforts with the |w{self.name} skill|C have borne fruit.  You can now practice it better.|n")
             self.effort += 1
         self.exp = 0
-        self._save()
     def train_up(self):
         if self.can_meditate:
             # if self.can_master

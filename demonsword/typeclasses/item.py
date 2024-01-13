@@ -12,17 +12,19 @@
         * Low chance of variants, only when quality is max
 """
 from .objects import Object
-from util.AttrProperty import AttributeProperty
+from util.AttributeProperty import AttributeProperty
 
 class Item(Object):
+    _content_types = ("object","item",)
     # Old properties
     portable    = True                                  # ObjectParent/portable
     # New properties
-    size        = AttributeProperty("size",1)           # Determines what containers this can be stored in
-    wear_slot   = AttributeProperty("wear_slot",None)   # None, string, or list of strings matching equipcore slots
-    slot        = AttributeProperty("slot",None)        # In case this item is currently held/worn, store where
-    belt_attach = AttributeProperty("belt_attach",False)# Meant to be hunt on a belt
-    fast_remove = AttributeProperty("fast_remove",False)# Equipment: Can be pulled off without effort
+    size        = AttributeProperty(1)          # Determines what containers this can be stored in
+    wear_slot   = AttributeProperty(None)       # None, string, or list of strings matching equipcore slots
+    slot        = AttributeProperty(None)       # In case this item is currently held/worn, store where
+    belt_attach = AttributeProperty(False)      # Meant to be hung on a belt
+    fast_remove = AttributeProperty(False)      # Equipment: Can be pulled off without effort
+    last_container = AttributeProperty(None)    # For the return command, track the last container this was removed from.
     
     def at_equip(self,character, slot): # includes 
         self.slot = slot
@@ -53,10 +55,23 @@ class Item(Object):
         return []
 
 class Equipment(Item):
-
+    _content_types = ("object","item","equip",)
     pass
     
 class Pants(Equipment):
     wear_slot="legs"
 class Shirt(Equipment):
     wear_slot="shirt"
+    
+# This requires equipment core's require to check for tools with skillkeys
+class Tool(Equipment):
+    _content_types = ("object","item","tool",)
+    quality     = AttributeProperty(50) # this number is bullshit and should be removed until I have use of it
+    level       = AttributeProperty(1)  # ? your mother
+    material    = AttributeProperty(None) # should correspond to a resource?
+    skillKeys   = AttributeProperty([]) # Keys and keys and keys and keys
+    
+class MiningTool(Tool):
+    skillKeys = ["mining"]
+class Pickaxe(MiningTool):
+    name="pickaxe"

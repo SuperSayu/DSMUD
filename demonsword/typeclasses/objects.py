@@ -11,7 +11,7 @@ inheritance.
 
 """
 from evennia.objects.objects import DefaultObject
-from util.AttrProperty import AttributeProperty,UpdateDefaults
+from util.AttributeProperty import AttributeProperty,UpdateDefaults
 #from evennia.prototypes.spawner import spawn
 from util.spawn import spawn
 #from .characters import Character
@@ -26,8 +26,9 @@ class ObjectParent:
     take precedence.
 
     """
-    container   = AttributeProperty("container",False) # Property: this can hold portable things
-    portable    = AttributeProperty("portable", False) # Property: this can be picked up
+    container       = AttributeProperty(False)  # Property: this can hold portable things
+    portable        = AttributeProperty(False)  # Property: this can be picked up
+    newlocks        = AttributeProperty({})     # Property:  
     
     def at_pre_item_receive(self,incoming,slot=""):
         """
@@ -78,6 +79,8 @@ class ObjectParent:
         def report(item):
             looker.msg(f"* A |w{item}|n.")
         self.for_contents(report)
+    def get_background_desc(self, looker, **kwargs):
+        return self.get_display_desc(looker,**kwargs)
     
     def __init_subclass__(cls):
         """
@@ -239,48 +242,4 @@ class Object(ObjectParent, DefaultObject):
     
     pass
 
-class SpawnerObject(Object):
-    """
-    SpawnerObjects are meant to simplify spawning stuff
-    """
-    giver = AttributeProperty("spawn_giver",False)
 
-    def spawn_success(self,obj,caller):
-        #obj.location = self.location
-        if self.giver and isinstance(caller,DefaultObject):
-            check=caller.items.pickup(obj,silent=True)
-            if check:
-                caller.msg(f"You find a |w{obj}|n!  You pick it up.")
-            else:
-                caller.msg(f"You find a |w{obj}|n")
-            return
-        if caller:
-            caller.msg(f"You see a |w{obj}|n laying around.")
-"""    def spawn(self,proto_key,user=None):
-        #self.source = PrototypeDB()
-        #prototype = self.source[proto_key]
-        
-        if proto_key == None or proto_key == 0 or proto_key == "":
-            return []
-        
-        if isinstance(proto_key,str):
-            obj = spawn(proto_key,caller=user)
-        elif isinstance(proto_key,list):
-            obj = spawn(*proto_key,caller=user)
-        
-        
-        if isinstance(obj,list):
-            for o in obj:
-                if isinstance(o,Object):
-                    o.spawned_by(self,user)
-                    self.spawn_success(o,user)
-        elif isinstance(obj,Object):
-            obj.spawned_by(self,user)
-            self.spawn_success(obj,user)
-        elif obj == None:
-            return []
-        else: # ???
-            raise "SpawnerObject.spawn:what?"
-            return []
-        
-        return obj"""

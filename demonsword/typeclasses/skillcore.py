@@ -26,7 +26,8 @@ class SkillCore:
     
     def __init__(self,parent):
         self.parent=parent
-        
+    def __contains__(self,key) -> bool:
+        return True
     def __getitem__(self, key) -> Skill:
         """
             Returns the requested skill (as the class Skill).
@@ -37,12 +38,16 @@ class SkillCore:
         temp = Skill(self.parent,key)
         self.skills[key] = temp
         return temp
+    def __delitem__(self,key):
+        if key in self.skills:
+            del self.skills[key]
+        self.parent.attributes.remove(key,category="skills")
         
     def __str__(self):
         """
             Debug/Temporary: Formal all skills into a simple list.
         """
-        result=f"|CSkill Name |||n  exp  |C|||n  eff\u25b3 |C|||n  trn\u25ca |C|||n  aff\u25c8 |C|||n  mas\u25cc|/|C----------------------------------------------------|n|/"
+        result=f"|CSkill Name |||n  exp  |C|||n  EV   |C|||n Stat  |C|||n  eff\u25b3 |C|||n  trn\u25ca |C|||n  aff\u25c8 |C|||n  mas\u25cc|/|C------------------------------------------------------------------|n|/"
         for skill in self.parent.attributes.all(category="skills"):
             result += self[skill.key].__str__() + "|/"
         return result
@@ -69,7 +74,7 @@ class SkillCore:
             return
         for skill in self.parent.attributes.all(category="skills"):
             if not (skill.key in self.skills):
-                self.skills[skill.key] = Skill(self.parent,skill.key,data=skill.value)
+                self.skills[skill.key] = Skill(self.parent,skill.key)#,data=skill.value)
         self.populated = True
     
     def show(self,selected:Union[str,list[str]]=None):
@@ -90,21 +95,6 @@ class SkillCore:
                 self.parent.msg("|/"+self[selected].desc)
         else:
             self.parent.msg(self.__str__())
-    def _load(self): # Not really needed since skills load on a lazy basis
-        """
-            Internal: Load data from Evennia attributes.
-        """
-        self.Populate()
-        
-    def _save(self):
-        """
-            Internal: Save data to Evennia attributes.
-            The Skill Core does not have any unique data
-            and only force-saves all extant skills.
-        """
-        for key in skills:
-            skills[key]._save()
-        pass
         
     def _reset(self): # Debug: reset everything
         """
@@ -121,7 +111,10 @@ class SkillCore:
             del o
         self.parent.attributes.clear(category="skills")
         self.populated=False # Technically true since no skills exist
-        
+    
+    def isActive(self,skillName):
+        return True # Todo
+    
     def Check(self,skillName,tier = 1, min_tier = -1, max_tier = -1, **kwargs) -> int:
         """
             Performs a skill check.  A result less than zero is a failure.
@@ -129,13 +122,6 @@ class SkillCore:
             This may change in later versions of the system.
         """
         
-        """skill = self[skillName]
-        result=skill.Check(difficulty)
-        near = abs(result)
-        if near <= 4:
-            skill.practice(near)
-            if skill.stat != None:
-                self.parent.stats.Exercise(skill.stat,skill,near)"""
         skill = self[skillName]
         result = skill.Check(tier,min_tier,max_tier,**kwargs)
         return result
@@ -156,6 +142,9 @@ class SkillCore:
         for key in self.skills:
             yield self.skills[key]
 
+    def Cooldown(self):
+        for skill in self.All():
+            skill.Cooldown()
 #
 # These functions advance your skills
 #

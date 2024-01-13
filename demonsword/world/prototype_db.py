@@ -79,18 +79,18 @@ class PrototypeDB:
         return True
         
     def populate(self):
-        for f in listdir(self.toml_dir):
-            if f[-5:].lower() != ".toml":
+        for filename in listdir(self.toml_dir):
+            if filename[-5:].lower() != ".toml":
                 continue
-            self.loaded.append(f)
-            with open(f"{self.toml_dir}/{f}","rb") as file:
+            self.loaded.append(filename)
+            with open(f"{self.toml_dir}/{filename}","rb") as file:
                 dat = tomllib.load(file)
-                for k,v in dat.items():
-                    if not isinstance(v,dict):
-                        raise ValueError(f"PrototypeDB.populate({f}): Top level variable is not dict.")
+                for proto_key,proto_dict in dat.items():
+                    if not isinstance(proto_dict,dict):
+                        raise ValueError(f"PrototypeDB.populate({filename}): Top level variable is not dict.")
                         continue
-                    if self.validate(f,k,v):
-                        v["prototype_key"]=k
+                    proto_dict["prototype_key"]=proto_key
+                    if self.validate(filename,proto_key,proto_dict):
                         #v["exec"]=["obj.at_post_spawn()"] #does get loaded but doesn't work?
-                        load_module_prototypes(v)
-                        self.loaded.append(f"> {k}")
+                        load_module_prototypes(proto_dict)
+                        self.loaded.append(f"> {proto_key}")

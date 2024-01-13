@@ -20,6 +20,14 @@ lock functions from evennia.locks.lockfuncs.
 
 """
 
+def so_seen(accessing_obj,accessed_obj,*args,**kwargs):
+    """
+    For screen objects, calls the screen object's Seen(looker).
+    This is meant for instances where the object appears only after
+    a successful skill check of some kind. 
+    """
+    return accessed_obj.Seen(accessing_obj)
+
 # def myfalse(accessing_obj, accessed_obj, *args, **kwargs):
 #    """
 #    called in lockstring with myfalse().

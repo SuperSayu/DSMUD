@@ -2,7 +2,7 @@
 
 # Equipment
 [backpack]
-    typeclass="typeclasses.storage_object.Backpack"
+	typeclass="typeclasses.storage_object.Backpack"
 	prototype_desc = "A basic backpack."
 	key="backpack"
 	desc="A cloth satchel meant to be slung over your shoulder."
@@ -15,7 +15,7 @@
 	typeclass="typeclasses.storage_object.BeltStorage"
 	prototype_desc = "A pouch for attaching to belts."
 	key="pouch"
-	desc="A small pouch with a hook for attaching to your belt."
+	desc="A small pouch with a hook for attaching to your belt.  If worn correctly, you can access its contents quickly."
 [scabbard]
 	typeclass="typeclasses.storage_object.BeltScabbard"
 	prototype_desc="Basic scabbard, hangs on belt, holds swords."
@@ -36,8 +36,8 @@
 	typeclass="typeclasses.storage_object.Destroyer"
 	prototype_desc="Destroys any item placed inside, for debug use."
 	key="trash can"
+	scene_desc="There is a |wtrash can|n standing here."
 	desc="Automagic trash disposal unit.  Place things inside to immediately destroy them."
-	portable=false
 
 # Resources
 [berries]
@@ -70,17 +70,21 @@
 
 [berrybush]
 	typeclass="typeclasses.resources.ResourceNode"
-	prototype_desc="Test resource node: sticks and berries @2/0-3."
+	prototype_desc="Test resource node: sticks and berries @10/9-12."
 	key = "berry bush"
-	min_tier = 0
-	max_tier = 3
-	nominal_tier = 2
+	spawn_giver = true
+	desc = "This low bush has many low branches containing a variety of berries."
+	unseen_desc = "You notice a few bushes around."
+	seen_desc = "You notice a |wberry bush|n among the scattered bushes."
+	min_tier = 4
+	max_tier = 6
+	nominal_tier = 5
 	rare_chance = 5
 	trash_chance = 35
 	[berrybush.resources]
-		0 = { stick = 35, berries=15, "" = 50 }
-		2 = { stick = 35, berries=50, "" = 15 }
-		3 = "berries"
+		4 = { stick = 35, berries=15, "" = 50 }
+		6 = { stick = 35, berries=50, "" = 15 }
+		7 = { stick = 15, berries = 85 }
 	[berrybush.rare]
 		stick = "magicstick"
 		berries = "magicberries"

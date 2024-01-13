@@ -5,6 +5,8 @@
 """
 from util.random import roll
 from random import randint,choice
+from evennia.utils.evtable import EvTable
+from util.AttributeProperty import AttributeProperty,SubProperty
 AspectList = [
     "bod","mnd","spr", # Columns
     "pow","fin","cap","res","aes","hea", # Rows
@@ -41,70 +43,51 @@ def AttributeToAspects(attr:str) -> tuple[str,str]:
         return ("luc","luc")
         
 def StatGrid(with_aspects=True,include_health=True,with_values=None) -> str:
-    if with_aspects and with_values:
-        return f"""| XP:{with_values.exp.__str__().rjust(6)} | LV:{with_values.level.__str__().rjust(6)} |
-| LUC | BOD | MND | SPR |
-| {with_values.PADSTR('luc')} | {with_values.PADSTR('bod')} | {with_values.PADSTR('mnd')} | {with_values.PADSTR('spr')} |
-| POW | STR | INT | WIL |
-| {with_values.PADSTR('pow')} | {with_values.PADSTR('str')} | {with_values.PADSTR('int')} | {with_values.PADSTR('wil')} |
-| FIN | DEX | WIT | PER |
-| {with_values.PADSTR('fin')} | {with_values.PADSTR('dex')} | {with_values.PADSTR('wit')} | {with_values.PADSTR('per')} |
-| CAP | STM | MEM | AUR |
-| {with_values.PADSTR('cap')} | {with_values.PADSTR('stm')} | {with_values.PADSTR('mem')} | {with_values.PADSTR('aur')} |
-| RES | CON | STB | WIS |
-| {with_values.PADSTR('res')} | {with_values.PADSTR('con')} | {with_values.PADSTR('stb')} | {with_values.PADSTR('wis')} |
-| AES | BEA | SAN | GRA |
-| {with_values.PADSTR('aes')} | {with_values.PADSTR('bea')} | {with_values.PADSTR('san')} | {with_values.PADSTR('gra')} |
-| HEA |  HP |  MP |  SP |
-| {with_values.PADSTR('hea')} | {with_values.PADSTR('hp')} | {with_values.PADSTR('mp')} | {with_values.PADSTR('sp')} |"""
-    if with_values:
-        return f"""| XP:{with_values.exp.__str__().rjust(6)} | LV:{with_values.level.__str__().rjust(6)} |
-| STR | INT | WIL |
-| {with_values.PADSTR('str')} | {with_values.PADSTR('int')} | {with_values.PADSTR('wil')} |
-| DEX | WIT | PER |
-| {with_values.PADSTR('dex')} | {with_values.PADSTR('wit')} | {with_values.PADSTR('per')} |
-| STM | MEM | AUR |
-| {with_values.PADSTR('stm')} | {with_values.PADSTR('mem')} | {with_values.PADSTR('aur')} |
-| CON | STB | WIS |
-| {with_values.PADSTR('con')} | {with_values.PADSTR('stb')} | {with_values.PADSTR('wis')} |
-| BEA | SAN | GRA |
-| {with_values.PADSTR('bea')} | {with_values.PADSTR('san')} | {with_values.PADSTR('gra')} |
-|  HP |  MP |  SP |
-| {with_values.PADSTR('hp')} | {with_values.PADSTR('mp')} | {with_values.PADSTR('sp')} |"""
-    if with_aspects:
-        return f"""| LUC | BOD | MND | SPR |
-| POW | STR | INT | WIL |
-| FIN | DEX | WIT | PER |
-| CAP | STM | MEM | AUR |
-| RES | CON | STB | WIS |
-| AES | BEA | SAN | GRA |
-| HEA |  HP |  MP |  SP |"""
-    if include_health:
-        return f"""| STR | INT | WIL |
-| DEX | WIT | PER |
-| STM | MEM | AUR |
-| CON | STB | WIS |
-| BEA | SAN | GRA |
-|  HP |  MP |  SP |"""
-    return f"""| STR | INT | WIL |
-| DEX | WIT | PER |
-| STM | MEM | AUR |
-| CON | STB | WIS |
-| BEA | SAN | GRA |"""
+    table=[]
+    cols=[['luc','pow','fin','cap','res','aes','hea'],['bod','str','dex','stm','con','bea','hp'],['mnd','int','wit','mem','stb','san','mp'],['spr','wil','per','aur','wis','gra','sp']]
+    if not include_health:
+        del cols[0][-1], cols[1][-1], cols[2][-1], cols[3][-1]
+    if not with_aspects:
+        del cols[0], cols[0][0], cols[1][0], cols[2][0]
+    if not with_values:
+        table = cols
+    else:
+        for col in cols:
+            c = []
+            for r in col:
+                if with_aspects and (r in AspectList):
+                    c.extend( [f"|w{r.upper()}|n", f"|c{with_values[r].value}|n" ] )
+                else:
+                    c.extend( [r.upper(), f"|y{with_values[r].value}|n" ] )
+            table.append( c )
+    return EvTable(table=table,pad_width=0,pad_left=2,pad_right=2,align='c')
 
-# ---
+stat_default = {"bonus":0,"exp":0,"stress":0}
+
+class StatAttribute(AttributeProperty):
+    _attr_get_source = lambda _, instance: instance.core.attributes
+    _key_get = lambda _,instance: instance.key
+    _data_default = stat_default
+    _category="stats"
 
 class Stat:
     """
         A Stat class is a wrapper around Evennia attribute dictionary.
     """
+    data = StatAttribute()
+    bonus = SubProperty()
+    exp = SubProperty()
+    stress = SubProperty()
+    
     def __init__(self,character,key:str):
         self.parent = character
         self.core   = character.stats
         self.key    = key
         if not (key in AttributeList):
             raise Exception(f"Not a stat: {key}")
-        self._load()
+        self.col_key, self.row_key = AttributeToAspects(self.key) # I love python :)
+        self.col = self.core[self.col_key]
+        self.row = self.core[self.row_key]
         
     def __str__(self):
         """
@@ -116,21 +99,6 @@ class Stat:
         int(Stat) is its value
         """
         return self.value
-    def _load(self):
-        """
-            Internal: Load data from Evennia attribute dictionary
-        """
-        self.data = self.core.attributes.get(self.key,category="stats",
-            default={"bonus":0,"exp":0,"stress":0} )
-        self.col_key, self.row_key = AttributeToAspects(self.key) # I love python :)
-        self.col = self.core[self.col_key]
-        self.row = self.core[self.row_key]
-        
-    def _save(self):
-        """
-            Internal: Save data to EVennia attribute dictionary
-        """
-        self.core.attributes.add(self.key,self.data,category="stats")
     
     # Exercising a stat actually either exercises the row or column.
     # When you rest, the exp is distributed randomly.  Full stats improve with sleep.
@@ -151,10 +119,9 @@ class Stat:
             if newbase > base:
                 if not self.col.can_exercise:
                     self.col.exp = newbase
-                    self.parent.msg(f"Your {self.col.name} aspect is full.  Perhaps you should rest.")
+                    self.parent.msg(f"|CYour |w{self.col.name}|C aspect is full.  Perhaps you should |yrest|C.|n")
                 else:
                     self.parent.msg(f"Your {self.col.name} is more experienced.")
-                self.col._save()
         if self.row.can_exercise:
             base = self.row.exp // 1
             self.row.exp += amt * row_mult
@@ -162,15 +129,13 @@ class Stat:
             if newbase > base:
                 if not self.row.can_exercise:
                     self.row.exp = newbase
-                    self.parent.msg(f"Your {self.row.name} aspect is full.  Perhaps you should rest.")
+                    self.parent.msg(f"|CYour |w{self.row.name}|C aspect is full.  Perhaps you should |yrest|C.|n")
                 else:
                     self.parent.msg(f"Your {self.row.name} is more experienced.")
-                self.row._save()
     # Attribute exp into bonus increase
     def Improve(self):
         self.exp = 0
         self.bonus += 1
-        self._save()
         self.parent.msg(f"Your {self.name} gets better.")
     def Rest(self):
         self.stress = 0
@@ -183,29 +148,8 @@ class Stat:
         return StatNames[self.key]
     
     @property
-    def bonus(self):
-        return self.data["bonus"]
-    @bonus.setter
-    def bonus(self,b):
-        self.data["bonus"] = b
-        self._save()
-    @property
-    def stress(self):
-        return self.data["stress"]
-    @stress.setter
-    def stress(self,s):
-        self.data["stress"] = s
-        self._save()
-    @property
     def overstressed(self):
         return self.stress > self.bonus
-    @property
-    def exp(self):
-        return self.data["exp"]
-    @exp.setter
-    def exp(self,e):
-        self.data["exp"]=e
-        self._save()
     @property
     def value(self):
         return self.bonus + self.row.bonus + self.col.bonus
@@ -219,6 +163,11 @@ class Stat:
     def can_improve(self):
         return self.exp >= (self.bonus+1) and self.bonus < (self.col.bonus + self.row.bonus + 3)
 
+
+aspect_default = {"bonus":0,"exp":0}
+class AspectAttribute(StatAttribute):
+    _data_default = aspect_default
+    
 class Aspect:
     """
         Handler/wrapper for aspect rows/columns
@@ -226,7 +175,10 @@ class Aspect:
     key=None
     type=None # row or col
     related=[] # stats
-    data=None # { bonus:int,exp:int }
+    #data=None # { bonus:int,exp:int }
+    data = AspectAttribute()
+    bonus = SubProperty()
+    exp = SubProperty()
     def __init__(self,character,key):
         self.parent = character
         self.core   = character.stats
@@ -246,9 +198,11 @@ class Aspect:
             self.type = 'row'
             index -= 3 # get position relative to start of row aspects
             self.related = AttributeList[index::6] #index, index+6, index+12 eg 0(str), 6(int),12(wil)
-        self._load()
+#        self._load()
     def __str__(self):
         return self.data.__str__()
+    def __int__(self):
+        return self.bonus
     def _load(self):
         self.data = self.core.attributes.get(self.key,category="stats",default={"bonus":0,"exp":0})
     def _save(self):
@@ -265,20 +219,20 @@ class Aspect:
             if s.can_exercise:
                 candidates.append(s)
         if len(candidates) == 0:
-            self.parent.msg(f"You feel like your {self.name} aspect is at full capacity!")
+            self.parent.msg(f"|CYou feel like your |w{self.name}|C aspect is at full capacity!|n")
             return
         while len(candidates)>0 and self.exp > 0:
             n = randint(0,len(candidates)-1)
             c = candidates[n]
             c.exp += 1
-            c._save()
+            #c._save()
             self.exp -= 1
             if not c.can_exercise: # now full
                 candidates.remove(c)
-                self.parent.msg(f"Your {c.name} feels full.  Maybe you should sleep it off.")
+                self.parent.msg(f"|CYour |w{c.name}|C feels full.  Maybe you should |ysleep|C it off.|n")
                 if len(candidates) == 0:
                     return # give message next time
-        self._save()
+        #self._save()
     
     def improve(self,skill):
         self.parent.msg(f"Because of your {skill.name} skill, your {self.name} Aspect has increased to {self.bonus+1}")
@@ -294,22 +248,8 @@ class Aspect:
                 s.Improve()
     
     @property
-    def bonus(self):
-        return self.data["bonus"]
-    @bonus.setter
-    def bonus(self,b):
-        self.data["bonus"]=b
-        #self._save()
-    @property
     def value(self): # For compatability.  For stats, value = bonus + aspects.
         return self.data["bonus"]
-    @property
-    def exp(self):
-        return self.data["exp"]
-    @exp.setter
-    def exp(self,e):
-        self.data["exp"]=e
-        #self._save()
     @property
     def can_exercise(self):
         return self.exp < (self.bonus + 2)
