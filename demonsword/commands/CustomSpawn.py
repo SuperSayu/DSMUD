@@ -2,7 +2,9 @@ from evennia.prototypes import menus as olc_menus
 from evennia.prototypes import prototypes as protlib
 from evennia.prototypes import spawner
 from evennia.utils.utils import list_to_string
-from evennia.commands.default.building import CmdSpawn
+from evennia.commands.default.building import CmdSpawn,CmdCreate
+from evennia.utils import create
+
 
 # I could wish simplify this further
 # I only need to insert one thing
@@ -245,3 +247,54 @@ class SpawnCommand(CmdSpawn):
                 obj.at_post_spawn(caller=self.caller)
         except RuntimeError as err:
             caller.msg(err)
+
+class CreateCommand(CmdCreate):
+    def func(self):
+        """
+        Creates the object.
+        """
+
+        caller = self.caller
+
+        if not self.args:
+            string = "Usage: create[/drop] <newname>[;alias;alias...] [:typeclass.path]"
+            caller.msg(string)
+            return
+
+        # create the objects
+        for objdef in self.lhs_objs:
+            string = ""
+            name = objdef["name"]
+            aliases = objdef["aliases"]
+            typeclass = objdef["option"]
+
+            # create object (if not a valid typeclass, the default
+            # object typeclass will automatically be used)
+            lockstring = self.new_obj_lockstring.format(id=caller.id)
+            loc = caller.location
+            if loc == None:
+                loc = caller
+            obj = create.create_object(
+                typeclass,
+                name,
+                loc,
+                home=loc,
+                aliases=aliases,
+                locks=lockstring,
+                report_to=caller,
+            )
+            if not obj:
+                continue
+            if aliases:
+                string = (
+                    f"|CYou create a new |y{obj.typename}|C: |w{obj.name}|C (aliases: |w{', '.join(aliases)}|C).|n"
+                )
+            else:
+                string = f"|CYou create a new |y{obj.typename}|C: |w{obj.name}|C.|n"
+            # set a default desc
+            if not obj.db.desc:
+                obj.db.desc = "You see nothing special."
+            if not "drop" in self.switches:
+                caller.items.pickup(obj,silent=True)
+        if string:
+            caller.msg(string)

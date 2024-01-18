@@ -7,9 +7,8 @@ for allowing Characters to traverse the exit to its destination.
 
 """
 from evennia.objects.objects import DefaultExit
-
 from .objects import ObjectParent
-
+from .SceneObject import SceneObject
 
 class Exit(ObjectParent, DefaultExit):
     """
@@ -36,5 +35,54 @@ class Exit(ObjectParent, DefaultExit):
                                         not be called if the attribute `err_traverse` is
                                         defined, in which case that will simply be echoed.
     """
+    def display_section(self,looker,**kwargs):
+        return "e"
+    def get_display_footer(self, looker, **kwargs):
+        std_names={"e":"east","w":"west","n":"north","s":"south","i":"in","o":"out","u":"up","d":"down","ne":"northeast","nw":"northwest","se":"southeast","sw":"southwest"}
+        offer_aliases=[]
+        for x in self.aliases.all():
+            if len(x) <= 2 and x in std_names and self.name != std_names[x]:
+                offer_aliases.append(std_names[x])
+        if len(offer_aliases) > 0:
+            return f"This exit will take you |y{'|n/|y'.join(offer_aliases)}|n."
+        else:
+            return "" 
+        
+    def get_display_name(self, looker=None, **kwargs):
+        """
+        Displays the name of the object in a viewer-aware manner.
 
+        Args:
+            looker (TypedObject): The object or account that is looking
+                at/getting inforamtion for this object. If not given, `.name` will be
+                returned, which can in turn be used to display colored data.
+
+        Returns:
+            str: A name to display for this object. This can contain color codes and may
+                be customized based on `looker`. By default this contains the `.key` of the object,
+                followed by the DBREF if this user is privileged to control said object.
+
+        Notes:
+            This function could be extended to change how object names appear to users in character,
+            but be wary. This function does not change an object's keys or aliases when searching,
+            and is expected to produce something useful for builders.
+
+        """
+        offer_aliases=[]
+        std_names={"e":"east","w":"west","n":"north","s":"south","i":"in","o":"out","u":"up","d":"down","ne":"northeast","nw":"northwest","se":"southeast","sw":"southwest"}
+        for x in self.aliases.all():
+            if len(x) <= 2 and x in std_names and self.name != std_names[x]:
+                offer_aliases.append(x)
+        append=""
+        if len(offer_aliases)>0:
+            append=f"|n (|y{'|n,|y'.join(offer_aliases)}|n)"
+        if looker and self.locks.check_lockstring(looker, "perm(Builder)"):
+            return f"{self.name}{append}(#{self.id})"
+        return f"{self.name}{append}"
     pass
+class SceneExit(SceneObject,Exit):
+    """
+    SceneExits are normally hidden and teased in the room's descriptive text rather than explicitly listed.
+    """
+    _content_types=("exit","scene",)
+    

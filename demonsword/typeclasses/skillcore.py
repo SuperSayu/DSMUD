@@ -13,19 +13,34 @@
 from util.random import roll
 from .skills import Skill
 from typing import Union,Generator
+from util.AttributeProperty import RemoteAttributeProperty
+from .skillset import Stance,Job,Role
 
 class SkillCore:
     """
         A character SkillCore is the central point for asking the character to roll a skill check.
         It will also handle advancement when the character rests.
     """
-    parent = None
-    skills = {}
-    training = None
-    populated=False
+    parent      = None
+    # Active skillsets
+    _stance      = RemoteAttributeProperty(None,key="stance")
+    stance = None
+    _job  = RemoteAttributeProperty(None,key="job")
+    job = None
+    _role        = RemoteAttributeProperty(None,key="role")
+    role = None
+
+    # Set to a skill if you are currently doing a thing.  This is a temporary measure.
+    # I am pretty sure the mechanic behind this will go away soon.
+    training    = None
+    populated   = False
+    # The cached skills, these can be accessed with the skillcore get[] instead
+    skills      = {}
+    skillsets   = {"stance":{},"job":{},"role":{}}
     
     def __init__(self,parent):
         self.parent=parent
+        self.normalize()
     def __contains__(self,key) -> bool:
         return True
     def __getitem__(self, key) -> Skill:
@@ -65,7 +80,98 @@ class SkillCore:
         if not self.populated:
             self.populate()
         return len(self.skills)
-    
+    def skillset_exists(self,key,stype="stance"):
+        if not stype in ["stance","job","role"]:
+            raise IndexError(f"get_skillset: invalid stype {stype}")
+        return self.parent.attributes.has(key=key,category=stype)
+    def rename_skillset(self,oldkey,newkey, stype="stance"):
+        if not self.skillset_exists(oldkey):
+            return
+        if self.skillset_exists(newkey):
+            return
+        active = self.active_skillset(stype)
+        if active != None:
+            active = active.key
+        # Get rid of the pythonic data structure so we can deal with the evennia attribute
+        del self.skillsets[stype][oldkey]
+        attr=self.parent.attributes.get(key=oldkey,category=stype)
+        attr.key = newkey
+        self.parent.attributes.add(newkey,attr,category=stype)
+        self.parent.attributes.remove(key=oldkey,category=stype)
+        if active == oldkey:
+            self.activate_skillset(newkey,stype)
+        self.parent.msg(f"Renamed {stype} '{oldkey}' to '{newkey}'")
+            
+    def get_skillset(self, key, stype="stance"):
+        if not stype in ["stance","job","role"]:
+            raise IndexError(f"get_skillset: invalid stype {stype}")
+        if not key in self.skillsets[stype]:
+            generators = {"stance":Stance,"job":Job,"role":Role}
+            temp = generators[stype](self.parent,key)
+            self.skillsets[stype][key]=temp
+            return temp
+        return self.skillsets[stype][key]
+    def active_skillset(self,stype="stance"):
+        match stype:
+            case 'stance':
+                return self.stance
+            case 'job':
+                return self.job
+            case 'role':
+                return self.role
+            case _:
+                raise ValueError(f"Bad skillset type {stype}")
+    def del_skillset(self,key,stype="stance"):
+        if not stype in ["stance","job","role"]:
+            raise IndexError(f"get_skillset: invalid stype {stype}")
+        if self.skillset_exists(key,stype):
+            if key in self.skillsets[stype]:
+                del self.skillsets[stype][key]
+            
+            if key == getattr(self,f"_{stype}"):
+                setattr(self,f"_{stype}",None)
+                setattr(self,stype,None)
+                self.parent.attributes.remove(key=key,category=stype)
+                self.parent.msg(f"Deactivated and removed {stype} {key}.")
+                self.normalize()
+            else:
+                self.parent.attributes.remove(key=key,category=stype)
+                self.parent.msg(f"Removed {stype} {key}")
+        else:
+            self.parent.msg(f"{stype.capitalize()} {key} does not exist.")
+        
+    def activate_skillset(self,skillset,stype="stance",quiet=False):
+        if not stype in ["stance","job","role"]:
+            raise ValueError(f"activate_skillset: Invalid skillset type '{stype}'")
+        if skillset == "" or skillset == None:
+            setattr(self,f"_{stype}",None)
+            setattr(self,stype,None)
+            self.normalize()
+            return
+        if isinstance(skillset,str):
+            if not self.skillset_exists(skillset,stype):
+                if not quiet:
+                    self.parent.msg(f"Not activating missing {stype} {skillset}")
+                return
+            skillset = self.get_skillset(skillset,stype)
+        setattr(self,f"_{stype}",skillset.key)
+        setattr(self,stype,skillset)
+        if not quiet:
+            self.parent.msg(f"Activated {stype} {skillset.key}")
+    def normalize(self):
+        """
+            Internal: Make sure skillsets etc are in a sane configuration
+        """
+        if self._stance == None:
+            self.get_skillset("main",'stance') # activate will not create one if it doesn't exist, but get will.
+            self.activate_skillset("main",'stance',quiet=True)
+            return
+        if self.stance == None:
+            self.activate_skillset(self._stance or list(self.skillsets["stance"].keys())[0],quiet=True)
+            if self.stance == None:
+                self.get_skillset("main",'stance') # activate will not create one if it doesn't exist, but get will.
+                self.activate_skillset("main",'stance',quiet=True)                
+        return
     def populate(self):
         """
             Internal: Finish lazy-loading all skills from their Evennia attributes.
@@ -75,6 +181,11 @@ class SkillCore:
         for skill in self.parent.attributes.all(category="skills"):
             if not (skill.key in self.skills):
                 self.skills[skill.key] = Skill(self.parent,skill.key)#,data=skill.value)
+        generators = {"stance":Stance,"job":job,"role":Role}
+        for stype in ["stance","job","role"]:
+            for skillset in self.parent.attributes.all(category=stype):
+                if not skillset.key in self.skillsets[stype]:
+                    self.skillsets[stype][skillset.key] = generators[stype](self.parent,skillset.key)
         self.populated = True
     
     def show(self,selected:Union[str,list[str]]=None):
@@ -110,10 +221,27 @@ class SkillCore:
             (k,o) = self.skills.popitem()
             del o
         self.parent.attributes.clear(category="skills")
-        self.populated=False # Technically true since no skills exist
+        self.stance = None
+        self.job = None
+        self.role = None
+        for stype in ["stance","job","role"]:
+            d = self.skillsets[stype]
+            while len(d):
+                (k,o) = d.popitem()
+                del o
+            self.parent.attributes.clear(category=stype)
+            self.parent.attributes.remove(stype)
+        self.populated=False # Though technically true since no skills exist
+        self.normalize() # sanity
     
     def isActive(self,skillName):
-        return True # Todo
+        if self.stance != None and self.stance.find(skillName):
+            return True
+        if self.job != None and self.job.find(skillName):
+            return True
+        if self.role != None and self.role.find(skillName):
+            return True
+        return False
     
     def Check(self,skillName,tier = 1, min_tier = -1, max_tier = -1, **kwargs) -> int:
         """

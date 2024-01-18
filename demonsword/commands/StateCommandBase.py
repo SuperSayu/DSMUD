@@ -158,9 +158,3 @@ class StateCommand(Command):
         pass
     def at_post_state_skipped(self):
         delay(self.tick_secs,self.at_pre_state_continue)
-
-class ProcessStateCommand(StateCommand):
-    """
-        A Process State Command generalizes a specific use I have for state commands
-        where 
-    """

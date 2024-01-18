@@ -29,6 +29,7 @@ class ObjectParent:
     container       = AttributeProperty(False)  # Property: this can hold portable things
     portable        = AttributeProperty(False)  # Property: this can be picked up
     newlocks        = AttributeProperty({})     # Property:  
+    invisible       = AttributeProperty(False) # disable viewing
     
     def at_pre_item_receive(self,incoming,slot=""):
         """
@@ -79,7 +80,14 @@ class ObjectParent:
         def report(item):
             looker.msg(f"* A |w{item}|n.")
         self.for_contents(report)
-    def get_background_desc(self, looker, **kwargs):
+    def display_section(self,looker,**kwargs):
+        """
+        Returns a code determining which section in a room display this should be.
+        This should be t(hings), c(haracters), e(xits), d(escription), or f(ooter),
+        or "" for none.
+        """
+        return "t" if not self.invisible else ""
+    def get_background_desc(self, looker, state=None, **kwargs):
         return self.get_display_desc(looker,**kwargs)
     
     def __init_subclass__(cls):

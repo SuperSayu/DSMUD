@@ -1,19 +1,22 @@
-# key = { name, doing, desc, tags }
+# key = { name, doing, desc, tags, stat }
 
 [forage]
 	name="forage"
 	doing="foraging"
 	desc="Find and exploit natural resources in this area, such as plants or fungus."
 	tags = [ "resource" ]
+	stat = "wit"
 
 [mine]
 	name="mine"
 	doing="mining"
 	desc="Find and exploit mineral resources in this area, such as rocks and metal ores."
 	tags = [ "resource" ]
+	stat = "str"
 
 [search]
 	name = "search"
 	doing = "searching"
 	desc = "Find secrets, hidden things, and lost items in this area."
+	stat = "per"
 	tags = [ "resource" ]

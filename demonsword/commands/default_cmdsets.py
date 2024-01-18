@@ -20,9 +20,9 @@ from .rest import RestCommand,TrainCommand,MeditateCommand,SleepCommand,ResetSta
 from .stat_skill import StatsCommand,SkillsCommand
 from .StateCommandBase import StopCommand
 from .get_override import GetCommand,DropCommand,InventoryCommand,SwapHandsCommand,PutCommand,WearCommand,RemoveCommand,LookInCommand
-from .CustomSpawn import SpawnCommand
+from .CustomSpawn import SpawnCommand,CreateCommand
 from .SceneCommand import SceneCommand
-
+from .StanceCommand import StanceCommand,JobCommand,RoleCommand
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
     The `CharacterCmdSet` contains general in-game commands like `look`,
@@ -33,9 +33,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
     key = "DefaultCharacter"
 
     def at_cmdset_creation(self):
-        """
-        Populates the cmdset
-        """
+        "Populates the cmdset"
         super().at_cmdset_creation()
         
         # Inventory commands
@@ -69,9 +67,13 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(ResetStatsCommand())
         
         self.add(SpawnCommand())
+        self.add(CreateCommand())
         
         # This is still in testing/creation phase
         self.add(SceneCommand())
+        self.add(StanceCommand())
+        self.add(JobCommand())
+        self.add(RoleCommand())
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):

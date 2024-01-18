@@ -24,7 +24,7 @@ class Room(ObjectParent, DefaultRoom):
     properties and methods available on all Objects.
     """
     # from ObjectParent
-    container=True
+    container=True # not sure this is exactly used or anything
     
     # New APs
     state = AttributeProperty({})
@@ -44,32 +44,33 @@ class Room(ObjectParent, DefaultRoom):
         return None
     
     def __lt__(self,other):
-        if not isinstance(other,SceneObject):
+        if not isinstance(other,SceneObject): # this could be expanded if we knew another type with .priority
             return True
         return other.priority >= 0 # zero is the canonical location of the room description
-    def get_background_desc(self,looker,**kwargs):
+    
+    def get_background_desc(self,looker,state=None,**kwargs):
         return self.db.desc or ""
     
-    def get_display_desc(self, looker, **kwargs):
-        background = self.contents_get(content_type="scene")
+    def get_display_desc(self, looker,**kwargs):
+        background = [ so for so in self.contents_get(content_type="scene") if so.display_section(looker,**kwargs) == 'd' ]
+        
         if len(background) == 0:
-            return self.get_background_desc(looker,**kwargs) or "You see nothing special."
+            return self.get_background_desc(looker,self.state,**kwargs) or "You see nothing special."
         if len(background) == 1:
             so = background[0]
             if so.priority < 0:
                 return f"{background[0].get_background_desc(looker,**kwargs)} " + self.get_background_desc(looker,**kwargs)
             else:
-                return self.get_background_desc(looker,**kwargs) + f" {background[0].get_background_desc(looker,**kwargs)}"
+                return self.get_background_desc(looker,self.state,**kwargs) + f" {background[0].get_background_desc(looker,**kwargs)}"
         background.append(self)
-        background.sort()
-        background = [*map(lambda s:s.get_background_desc(looker,**kwargs),background)]
+        background = [*map(lambda s:s.get_background_desc(looker,self.state,**kwargs), sorted(background) )]
         while "" in background:        
             background.remove("")
         return " ".join(background)
 
     def get_display_things(self,looker,**kwargs):
         def _filter_visible(obj_list):
-            return (obj for obj in obj_list if obj != looker and not ("scene" in obj._content_types) and obj.access(looker, "view"))
+            return (obj for obj in obj_list if obj != looker and obj.display_section(looker,**kwargs) == 't' and obj.access(looker, "view"))
 
         # sort and handle same-named things
         things = _filter_visible(self.contents_get(content_type="object"))
@@ -86,4 +87,31 @@ class Room(ObjectParent, DefaultRoom):
             thing_names.append(singular if nthings == 1 else plural)
         thing_names = iter_to_str(thing_names)
         return f"\n|wYou see:|n {thing_names}" if thing_names else ""
+    def get_display_exits(self,looker,**kwargs):    
+        """
+        Get the 'exits' component of the object description. Called by `return_appearance`.
+
+        Args:
+            looker (Object): Object doing the looking.
+            **kwargs: Arbitrary data for use when overriding.
+        Returns:
+            str: The exits display data.
+
+        """
+
+        def _filter_visible(obj_list):
+            return (obj for obj in obj_list if obj != looker and obj.display_section(looker,**kwargs) == 'e' and obj.access(looker, "view"))
+
+        exits = _filter_visible(self.contents_get(content_type="exit"))
+        exit_names = iter_to_str(exi.get_display_name(looker, **kwargs) for exi in exits)
+
+        return f"|wExits:|n {exit_names}" if exit_names else ""
+    def get_display_footer(self,looker,**kwargs):
+        background = [ so for so in self.contents_get(content_type="scene") if so.display_section(looker,**kwargs) == 'f' ]
+        if len(background) == 0:
+            return ""
+        background = [*map(lambda s:s.get_background_desc(looker,**kwargs), sorted(background) )]
+        while "" in background:        
+            background.remove("")
+        return " ".join(background)
     pass

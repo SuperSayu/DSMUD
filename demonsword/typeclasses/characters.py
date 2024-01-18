@@ -62,7 +62,8 @@ class Character(ObjectParent, DefaultCharacter):
         """
         return [self.stats]
 #endregion
-    
+    def display_section(self,looker,**kwargs):
+        return "c"
     exceptions=[]
     def log_error(self,err:Exception, traceback):
         self.msg(f"Exception: {err}")

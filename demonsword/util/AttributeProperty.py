@@ -72,16 +72,16 @@ class AttributeProperty:
     _data_get = lambda self,parent,attributes,key,default: attributes.get(
                     key=key,
                     default=default,
-                    category=self._category,
+                    category=self._category_get(parent,attributes,key),
                     strattr=self._strattr,
                     raise_exception=self._autocreate)
     _data_set = lambda self,parent,attributes,key,data: attributes.add(
                 key,
                 data,
-                category=self._category,
+                category=self._category_get(parent,attributes,key),
                 lockstring=self._lockstring,
                 strattr=self._strattr)
-    _data_del = lambda self,parent,attributes,key: attributes.remove(key=key, category=self._category)
+    _data_del = lambda self,parent,attributes,key: attributes.remove(key=key, category=self._category_get(parent,attributes,key))
 
     _data_validate = lambda self,parent,attributes,key,data,setting: True # setting: true if in set, false if in get
     _data_get_invalid = lambda self,parent,attributes,key,data: self._raise(ValueError(f"{parent}/{key}: data get invalid: '{data}'"))
@@ -89,6 +89,7 @@ class AttributeProperty:
     _data_default = None # default value or lambda self,parent,attributes,key
     _data_at_get = lambda self,parent,attributes,key,data: data
     _data_at_set = lambda self,parent,attributes,key,data: data
+    _category_get = lambda self,parent,attributes,key: self._category
     
     def _get_default(self,parent,attributes,key):
         if callable(self._data_default):
@@ -191,6 +192,10 @@ class AttributeProperty:
 
 class NAttributeProperty(AttributeProperty):
     _attr_get_source = lambda _,instance: instance.nattributes
+class RemoteAttributeProperty(AttributeProperty):
+    _attr_get_source = lambda _,instance: instance.parent.attributes
+class RemoteNAttributeProperty(RemoteAttributeProperty):
+    _attr_get_source = lambda _,instance: instance.parent.nattributes
 
 class SubProperty:
     """
@@ -242,6 +247,8 @@ class SubProperty:
         for kw,val in kwargs.items():
             if kw in valid_kwargs:
                 setattr(self,kw,val)
+            if kw == "key":
+                setattr(self,"_get_key",val)
         
     def __set_name__(self,cls,name):
         self._field_name = name
@@ -251,6 +258,8 @@ class SubProperty:
     def key(self,instance):
         if callable(self._get_key):
             return self._get_key(instance)
+        if isinstance(self._get_key,str) and len(self._get_key) > 0:
+            return self._get_key
         if callable(self._default_key):
             return self._default_key(instance)
         return self._default_key

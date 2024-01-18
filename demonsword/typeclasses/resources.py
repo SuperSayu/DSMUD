@@ -141,7 +141,7 @@ class ResourceNode(SpawnerObject):
     
     
 
-    def get_background_desc(self, looker, **kwargs):
+    def get_background_desc(self, looker, state=None, **kwargs):
         if not self.access(looker,"bgview") or self.invisible:
             return ""
         if self.Seen(looker):
