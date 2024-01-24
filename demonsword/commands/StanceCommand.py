@@ -24,7 +24,7 @@ class StanceCommand(MuxCommand):
     Stance/Lock [Stance Name][:Aspect] or [Stance Name][=Skill] :: Lock a skill in a skillset so it cannot be overridden.
     """
     key="stance"
-    aliases=["stances"]
+    aliases=["job","role"]
     sstype = "stance"
     valid_commands = ["create","edit","remove","view","list","set","lock","rename"]
     command=None
@@ -37,6 +37,7 @@ class StanceCommand(MuxCommand):
     
     def parse(self):
         super().parse()
+        self.sstype = self.cmdstring.lower()
         self.fault = None
         if len(self.switches) > 1:
             self.fault = "Too many switches"
@@ -73,7 +74,7 @@ class StanceCommand(MuxCommand):
             case _:
                 self.caller.msg(f"Unimplemented Command {self.command}")
     def validate_skillname(self,incoming):
-        if not isinstance(incoming,str) or len(incoming) == 0:
+        if not isinstance(incoming,str) or len(incoming) < 3:
             return False
         invalid_chars=[":","#","!","/","\\"]
         for x in invalid_chars:
@@ -81,19 +82,25 @@ class StanceCommand(MuxCommand):
                 return False
         return True
     def Create(self,lhs):
+        if not self.validate_skillname(lhs):
+            self.caller.msg(f"{self.sstype.capitalize()}/Create {self.sstype}_name")
+            return
         if self.caller.skills.skillset_exists(lhs,self.sstype):
-            self.caller.msg(f"Create Skillset: {lhs} already exists")
+            self.caller.msg(f"Create {self.sstype}: {lhs} already exists")
             return
         _=self.caller.skills.get_skillset(lhs,self.sstype)
-        self.caller.msg(f"Created skillset {_.key}")
+        self.caller.msg(f"Created {self.sstype} {_.key}")
     def Rename(self,lhs,rhs):
-        if len(lhs) and rhs != None:
+        if len(lhs) and self.validate_skillname(rhs):
             self.caller.skills.rename_skillset(lhs,rhs,self.sstype)
         else:
-            self.caller.msg("{self.key}/rename old_key=new_key")
+            self.caller.msg(f"{self.sstype.capitalize()}/Rename old_key=new_key")
         return
     def DoSet(self,lhs):
-        if lhs == "":
+        if not lhs:
+            if self.rhs != None: # this is an explicit "skillset/set =" meaning unset, though what good is this even?  None, I say
+                self.caller.skills.activate_skillset(self.rhs,self.sstype)
+                return
             self.View(lhs)
             return
         self.caller.skills.activate_skillset(self.lhs,self.sstype)
@@ -126,8 +133,10 @@ class StanceCommand(MuxCommand):
         self.caller.msg(self.ViewLine('role',self.caller.skills.role))
         self.caller.msg("You currently have these skills active:")
         act = set(self.caller.skills.stance.loaded.values())
-        act.union( set(self.caller.skills.job.loaded.values()) if self.caller.skills.job != None else set() )
-        act.union( set(self.caller.skills.role.loaded.values()) if self.caller.skills.role != None else set() )
+        if self.caller.skills.job != None:
+            act=act.union( set(self.caller.skills.job.loaded.values()) )
+        if self.caller.skills.role != None:
+            act=act.union(set(self.caller.skills.role.loaded.values()) )
         self.caller.msg(", ".join(act))
         
     def List(self):

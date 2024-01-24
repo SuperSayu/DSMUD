@@ -104,6 +104,8 @@ class AttributeProperty:
             
         key = self.key(parent)
         attr = self.attributes(parent)
+        if not attr:
+            return None
         default = self._get_default(parent,attr,key)
         try:
             data = self._data_get(parent,attr,key,default)
@@ -123,6 +125,8 @@ class AttributeProperty:
                 save_data=data
                 if callable(self._data_at_set):
                     save_data = self._data_at_set(parent,attr,key,data)
+                if save_data == None:
+                    return save_data
                 # attribute didn't exist and autocreate is set
                 self.__set__(parent, save_data)
                 data = self._data_get(parent,attr,key,default)
@@ -324,7 +328,9 @@ class SubProperty:
         value = self._res_get(instance,data) if callable(self._res_get) else self._default_get(instance,data)
         
         if value == None and self._res_get_default != None:
-            return self.get_default(instance,data)
+            value = self.get_default(instance,data)
+            if value != None:
+                self.__set__(instance,value)
         
         return value
         

@@ -6,7 +6,7 @@
 
 from util.AttributeProperty import AttributeProperty
 from util.random import roll
-from .attr_aspect import AttributeList,AspectList,ValidStatIndex,AttributeToAspects,Stat,Aspect,StatGrid
+from .attr_aspect import AttributeList,AspectList,ValidStatIndex,AttributeToAspects,Stat,Aspect
 from .objects import Object
 from typing import Union,Generator
 # Increment when revised
@@ -51,9 +51,6 @@ class StatCore(Object):
         """makes the number x padded to [width] characters, sorta"""
         n = self[x].value.__str__()
         return n.center(width,' ')
-    
-    def show(self) -> None:
-        self.parent.msg(StatGrid(with_values=self))
     
     def _reset(self) -> None:
         """

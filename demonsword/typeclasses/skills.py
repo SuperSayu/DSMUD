@@ -9,7 +9,7 @@ from evennia.objects.objects import DefaultObject
 from .objects import ObjectParent
 from util.random import roll,show_roll
 from util.AttributeProperty import AttributeProperty,SubProperty
-from .attr_aspect import AttributeList,AspectList,StatGrid,StatNames
+from .attr_aspect import AttributeList,AspectList,StatNames
 from random import randint
 from evennia.utils.evmenu import get_input # caller, prompt, callback, *args, **kwargs
 from world.skills import SkillDB
@@ -17,82 +17,14 @@ from world.skills import SkillDB
 SKILLS_VERSION = 0.1
 
 # I believe this coefficient may be better at 0.55 for approx 1% xp at +/-8
-# This coefficient is for debugging (involving massive skill grinding)
+# Current coefficient is for debugging (involving massive skill grinding)
 SKILL_PRACTICE_COEFFICIENT = 0.875
 
 skilldb = SkillDB()
 
-def link_skill_to_stat(caller,skill):
-    caller.msg(f"You need to pick a primary stat to use for the {skill.name} skill.  Choose one from this grid:")
-    caller.msg(StatGrid(with_aspects=False,include_health=False))
-    skill.choosing = True
-    caller.skills.training = skill
-    get_input(caller,"Which one?",link_skill_stat_callback,None,**{"skill":skill})
-def link_skill_stat_callback(caller,prompt,response,skill):
-    skill.choosing = False
-    response = response.strip().lower()
-    if not response in AttributeList:
-        caller.msg("Ok, maybe later.")
-        caller.skills.training = None
-        return
-    skill.stat = response
-    res_name = StatNames[response]
-    caller.msg(f"You link the {skill.name} skill to your {res_name} stat.")
-    skill.train_up()
-    caller.skills.training = None
+skill_default = lambda _s,_i,_a,key: {"key":key,"aspect":None,"stance":None,"job":None,"role":None,"exp":0.0,"streak":0,"effort":0,"training":0,"affinity":0,"mastery":0}
 
-def link_skill_to_aspect(caller,skill):
-    stat = caller.stats[skill.stat]
-    caller.msg(f"You need to pick an aspect (row or column) to use for the {skill.name} skill.")
-    caller.msg(f"This will improve your aspect, allowing further growth.")
-    caller.msg(f"Since it is associated with {stat.name}, you can pick between {stat.col.name} ({stat.col_key}) and {stat.row.name} ({stat.row_key}).")
-    [can_col,can_row] = [caller.stats[stat.col_key].can_improve,caller.stats[stat.row_key].can_improve]
-    if not can_col and not can_row:
-        caller.msg(f"Unfortunately, neither aspect is ready.  You should exercise and improve your stats.")
-        return
-    skill.choosing = True
-    caller.skills.training = skill
-    if not can_col:
-        caller.msg(f"Unfortunately, your {stat.col.name} aspect is not ready.  You should exercise and improve your stats.")
-        get_input(caller,f"Link with your {stat.row.name} aspect?  Type yes or {stat.row_key} to proceed.",link_skill_aspect_callback,None,**{"skill":skill,"yes_opt":stat.row_key})
-    elif not can_row:
-        caller.msg(f"Unfortunately, your {stat.row.name} aspect is not ready.  You should exercise and improve your stats.")
-        get_input(caller,f"Link with your {stat.col.name} aspect?  Type yes or {stat.col_key} to proceed.",link_skill_aspect_callback,None,**{"skill":skill,"yes_opt":stat.col_key})
-    else:
-        get_input(caller,"Which one?  Type the three letter code, or nothing to cancel.",link_skill_aspect_callback,None,**{"skill":skill,"yes_opt":None})
-
-def link_skill_aspect_callback(caller,prompt,response,skill,yes_opt):
-    stat = caller.stats[skill.stat]
-    response = response.strip().lower()
-    if response == "yes":
-        if not isinstance(yes_opt,str):
-            link_skill_to_aspect(caller,skill)
-            return
-        response = opts
-    if (not response in [stat.col_key,stat.row_key]):
-        caller.msg("Ok, maybe later.")
-        caller.skills.training = None
-        skill.choosing = False
-        caller.skills.training = None
-        return
-    chosen = caller.stats[response]
-    # You can only raise an aspect when its row or column is full
-    if not chosen.can_improve:
-        caller.msg("You can only improve an aspect when all it is full.")
-        caller.msg(f"You need to exercise your {chosen.name} stats more.")
-        skill.choosing = False
-        caller.skills.training = None
-        return
-    skill.choosing = False
-    skill.aspect = response
-    caller.msg(f"You link the {skill.name} skill to the {chosen.name} Aspect.")
-    chosen.improve(skill)
-    skill.affinity_up()
-    caller.skills.training = None
-
-skill_default = lambda _s,_i,_a,key: {"key":key,"stat":None,"aspect":None,"exp":0.0,"streak":0,"effort":0,"training":0,"affinity":0,"mastery":0}
-
-# data = SA() -> packed data avaialble for standard SubProperty()
+# data = SA() -> packed data available for standard SubProperty()
 class SkillAttribute(AttributeProperty):
     _attr_get_source = lambda _, instance: instance.parent.attributes
     _key_get = lambda _,instance: instance.key
@@ -108,13 +40,13 @@ class SkillFlavorSubProperty(SubProperty):
 
 class Skill:
     parent      = None  # Character
-    key         = ""    # Skill unique identifier
-    choosing    = False
+    key         = ""    # Skill unique identifier\
     
     flavor      = None  # -> skilldb[key]
     name        = SkillFlavorSubProperty()
     doing       = SkillFlavorSubProperty()
     desc        = SkillFlavorSubProperty()
+    stat        = SkillFlavorSubProperty() # !
 
     data        = SkillAttribute() # packed data stored in attribute dict()
     exp         = SubProperty()
@@ -124,9 +56,10 @@ class Skill:
     affinity    = SubProperty()
     mastery     = SubProperty()
     
-    stat        = SubProperty()
-    aspect      = SubProperty()
-    
+    aspect      = SubProperty() # set when you enter a stance
+    stance      = SubProperty() # set to the stance name when put in a stance
+    job         = SubProperty() # set to the job name when slotted
+    role        = SubProperty() # set to the role name when slotted
 
 #region internals    
     def __init__(self, character, key):#, data=None):
@@ -157,7 +90,7 @@ class Skill:
     def __str__(self): # todo pretty print
         v=" |C|||n "
         return v.join([
-            f"|w{self.name}|n".rjust(14),
+            f"|w{self.name}({self.stat})|n".rjust(19),
             self.exp_str().center(5),
             str(self.EV).center(5),
             str(self.statValue).center(5),
@@ -173,9 +106,10 @@ class Skill:
 
     def Cooldown(self):
         if self.streak > 0:
-            self.streak -= 1
+            self.streak = max(self.streak - 0.05, 0)
             if self.streak == 0:
-                self.parent.msg(f"Your {self} skill has completely cooled down.")
+                self.parent.msg(f"Your {self.name} skill has completely cooled down.")
+                self.parent.skills.warm.remove(self.key)
         
     def roll(self,active=2,show=False):
         """
@@ -221,7 +155,12 @@ class Skill:
             If the check fails but would succeed at a lower tier,
             down to the given minimum, take penalties to reach that state.
             These penalties may create a de facto failure despite check success.
-            Practices the skill.  Effective exp gain within 2 tiers of nominal.
+            Practices the skill.  Effective exp gain closest to nominal check tier.
+            
+            Should have progressively worse rolls when the skill is:
+                Active (in stance - best)
+                Passive (not in stance, but in role/job
+                Neither (worst)
         """
         if min_tier == -1:
             min_tier = tier
@@ -242,7 +181,21 @@ class Skill:
             success_func(self,result_tier, boost, **data)
         return result_tier
 
-#region properties    
+#region properties
+    @property
+    def active(self):
+        if self.stance:
+            return True
+        if self.job or self.role:
+            return False
+        return None
+    @property
+    def passive(self):
+        if self.stance:
+            return False
+        if self.job or self.role:
+            return True
+        return None
     @property
     def statValue(self):
         if self.stat == None:
@@ -297,10 +250,14 @@ class Skill:
         # You get more exp if you are close to the target difficulty
         # Practicing a skill with wide min-max tiering is not necessarily good for xp
         amt = (self.affinity + 1) * round(pow(SKILL_PRACTICE_COEFFICIENT,amt),4)
-        self.streak = min(self.effort, self.streak + amt)
-        if amt < 0.01 or self.can_rest:
+        if amt < 0.01:
             return
-            
+        self.parent.stats[self.stat].Exercise(self,amt)
+        self.streak = min(self.effort, self.streak + amt)
+        self.parent.skills.warm.add(self.key)
+
+        if self.can_rest:
+            return
         base = self.exp // 1 # integer of experience
         self.exp += amt
         newbase = self.exp // 1
@@ -311,12 +268,6 @@ class Skill:
                 self.parent.msg(f"|CYour |w{self.name} skill|C feels full.  You should |yrest|C for a while.|n")
             else:
                 self.parent.msg("Your skill feels more experienced.")
-        else:
-            #debug print
-            #self.parent.msg(f"Gained {amt} skill xp")
-            pass
-        if self.stat != None:
-            self.parent.stats[self.stat].Exercise(self,amt)
         
     def Rest(self):
         if not self.can_rest:
@@ -344,14 +295,10 @@ class Skill:
             # if self.can_master
             self.parent.msg(f"After all the work you've put into {self.name}, you feel you need to meditate and search your soul to figure out what you need to do to get better.  You won't be able to train until you have cleared your mind.")
             return
-        if self.stat == None:
-            if self.parent.skills.training == None:
-                self.parent.skills.training = self
-                link_skill_to_stat(self.parent,self) # this is asynchronous, nothing more to do here
-            return
         self.parent.msg(f"Your training with the {self.name} skill has improved your technique, but it will take some effort to get used to it.")
         self.training += 1 # todo
         self.effort=0
+        self.streak=0
         self.exp=0
         return
     def affinity_up(self):
@@ -359,19 +306,12 @@ class Skill:
             #todo separate mechanism
             self.mastery_up()
             return
-        else:
-            if self.aspect == None:
-                if self.parent.skills.training == None:
-                    self.parent.skills.training = self
-                    link_skill_to_aspect(self.parent,self)
-                else:
-                    self.parent.msg(f"Bug: skillcore.training is set to {self.parent.skills.training.name} during {self.name} affinity linking")
-                return
-            self.affinity += 1
-            self.parent.msg(f"Your affinity with the {self.name} skill increases to {self.affinity}.")
-            self.parent.msg("You will have to start your training over from scratch.")
+        self.affinity += 1
+        self.parent.msg(f"Your affinity with the {self.name} skill increases to {self.affinity}.")
+        self.parent.msg("You will have to start your training over from scratch.")
         self.training = 0
         self.effort=0
+        self.streak=0
         self.exp=0
     def mastery_up(self):
         # Todo: Select some mechanism here, most likely a permanent unlock or circumstantial bonus
@@ -379,6 +319,7 @@ class Skill:
         self.affinity = 0
         self.training = 0
         self.effort=0
+        self.streak=0
         self.exp=0
         self.parent.msg(f"You feel your mastery with the {self.name} skill increase to {self.mastery}")
         self.parent.msg("You will need to gain affinity with this skill all over again.")

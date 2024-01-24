@@ -21,6 +21,7 @@ class SkillSet:
     """
     parent = None
     category="skillset"
+    active = False
     data = SkillsetAttribute(skillset_default)
     slots  = SubProperty()
     locked = SubProperty()
@@ -32,6 +33,8 @@ class SkillSet:
         self.data["key"]=key # don't want to reuse varname here
     def __str__(self):
         return str(self.data)
+    def ident(self):
+        return f"{self.key} {self.category}"
     def find(self,skill):
         for k,v in self.loaded.items():
             if v==None:
@@ -50,13 +53,15 @@ class SkillSet:
             aspect = aspect.key
         elif not aspect in AspectList:
             raise ValueError(f"Not an aspect: {aspect}")
+        old = None
         if aspect in self.loaded:
             if aspect in self.locked:
                 self.parent.msg(f"Aspect is locked: {aspect}")
                 return
+            old = self.loaded[aspect]
             if skill == None:
                 del self.loaded[aspect]
-                self.parent.msg(f"Cleared aspect {aspect}.")
+                self.onEdit(aspect,None,old)
                 return
             if isinstance(skill,Skill):
                 skill = skill.key
@@ -67,7 +72,7 @@ class SkillSet:
             self.parent.msg("No remaining slots")
             return
         self.loaded[aspect]=skill
-        self.parent.msg(f"Slotted skill {skill} into aspect {aspect}")
+        self.onEdit(aspect,skill,old)
                 
     def LockAspect(self,aspect):
         if isinstance(aspect,Aspect):
@@ -80,17 +85,78 @@ class SkillSet:
         else:
             self.locked.append(aspect)
             self.parent.msg(f"Locked aspect {aspect}")
-    pass
+    def onEquipped(self):
+        self.active = True
+        for asp,x in self.loaded.items():
+            self.onActivateSkill(asp,x)
+        pass
+    def onUnequipped(self):
+        self.active = False
+        for asp,x in self.loaded.items():
+            self.onDeactivateSkill(asp,x)
+        pass
+    def onActivateSkill(self,aspect,skill):
+        return
+    def onDeactivateSkill(self,aspect,skill):
+        return
+    def onBeforeSetSkill(self,aspect,newSkill):
+        # for jobs and roles this should refuse if a skill is in a complementary set
+        # you only need one to qualify as passive
+        if aspect in self.locked:
+            return False
+        if self.loaded[aspect] != newSkill and self.find(newSkill):
+            return False
+        return True
+        
+    def onEdit(self,aspect,newSkill,oldSkill):
+        if not oldSkill and not newSkill:
+            self.parent.msg("Nothing to do")
+            return
+        if aspect in self.locked:
+            self.parent.msg("Aspect is locked")
+            return
+        if oldSkill and not newSkill:
+            if self.active:
+               self.onDeactivateSkill(aspect,oldSkill)
+            self.parent.msg(f"Cleared aspect {aspect}.")
+            return
+        if oldSkill:
+            if self.active:
+                self.onDeactivateSkill(aspect,oldSkill)
+                self.onActivateSkill(aspect,newSkill)
+            self.parent.msg(f"Replaced skill {oldSkill} with skill {newSkill} for aspect {aspect}.")
+        else:
+            if self.active:
+                self.onActivateSkill(aspect,newSkill)
+            self.parent.msg(f"Slotted skill {newSkill} into aspect {aspect}.")
 
 # Stance skillset: what you are doing at any moment, can change fairly freely, unrestrained
 class Stance(SkillSet):
     category="stance"
-    pass
+    def onActivateSkill(self,aspect,skill):
+        s = self.parent.skills[skill]
+        s.aspect = aspect
+        s.stance = self.key
+    def onDeactivateSkill(self,aspect,skill):
+        s = self.parent.skills[skill]
+        s.aspect = None
+        s.stance = None
+
 # job skillset: What you do for a living, change only on rest, some restrictions
 class Job(SkillSet):
     category="job"
-    pass
+    def onActivateSkill(self,aspect,skill):
+        s = self.parent.skills[skill]
+        s.job = self.key
+    def onDeactivateSkill(self,aspect,skill):
+        s = self.parent.skills[skill]
+        s.job = None
 # Role skillset: What you do in combat, change only on rest, some restrictions
 class Role(SkillSet):
     category="role"
-    pass
+    def onActivateSkill(self,aspect,skill):
+        s = self.parent.skills[skill]
+        s.role = self.key
+    def onDeactivateSkill(self,aspect,skill):
+        s = self.parent.skills[skill]
+        s.role = None

@@ -38,7 +38,8 @@ class Character(ObjectParent, DefaultCharacter):
     at_post_puppet - Echoes "AccountName has entered the game" to the room.
 
     """
-
+    def at_init(self):
+        self.skills.normalize(fast=True)
 #region handlers
     @lazy_property
     def stats(self):

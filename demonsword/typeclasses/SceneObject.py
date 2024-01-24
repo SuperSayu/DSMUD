@@ -9,18 +9,67 @@
 from .objects import Object
 from .characters import Character
 from util.AttributeProperty import AttributeProperty
+from evennia.utils.dbserialize import _SaverDict as saverdict
 
 class SceneObject(Object):
     _content_types = ("object","scene",)
+    SceneVars=["desc","scene_desc","invisible"] # this can be edited with the scene command
     LongSceneVars=["desc","scene_desc"] # these are used by the Scene verb for viewing and editing
     priority = AttributeProperty(100)
     scene_desc = AttributeProperty(None)
     invisible = AttributeProperty(False) # disable viewing
     footer_display = AttributeProperty(False)
+    during = AttributeProperty({}) # during {tag: { variable:replacement,... },... }
+
+    def current_during(self,varlist=None):
+        ""
+        if varlist == None:
+            varlist = self.SceneVars
+        if len(varlist) == 0:
+            return {}
+        results={}
+        for x in varlist:
+            results[x] = self.attributes.get(x)
+        if not self.during:
+            return results
+        state = self.location.state
+        for x in state.keys():
+            if not x in self.during:
+                continue
+            sdict = self.during[x]
+            for y in sdict.keys():
+                if y in varlist:
+                    results[y]=sdict[y]
+                    
+        return results
+        
+    def set_during(self,tag,var,replacement,caller=None):
+        if tag == None or len(tag) == 0:
+            if caller:
+                caller.msg("No tag given")
+            return        
+        if not tag in self.during:
+            self.during[tag] = {}
+        d = self.during[tag]
+        if replacement == None:
+            if not var in d:
+                caller.msg("set_during: Attempting to remove nonexistent var")
+                return
+            del d[var]
+            if len(d) == 0:
+                del self.during[tag]
+                if caller:
+                    caller.msg(f"Removed {self.name}/{tag}/{var}.  {tag} is now empty, removing.")
+            else:
+                if caller:
+                    caller.msg(f"Removed {self.name}/{tag}/{var}.")
+            return
+        d[var]=replacement
+        if caller:
+            caller.msg(f"Set {self.name}/{tag}/{var}={replacement}.")
     
     def display_section(self,looker,**kwargs):
-        if self.invisible:
-            return ""
+        # I'd like to add the invisible here but that needs to be during-checked right now
         if self.footer_display:
             return "f"
         return "d"
@@ -38,10 +87,20 @@ class SceneObject(Object):
             locks.add("view:so_seen();bgview:so_seen()")
         """
         return not self.invisible 
-    def get_background_desc(self, looker, state=None, **kwargs):
-        if not self.access(looker,"bgview") or self.invisible:
+    def get_display_desc(self, looker,**kwargs):
+        x=self.current_during(["desc","invisible"])
+        d,i = x["desc"],x["invisible"]
+        if d == None: # allow explicit empty strings
+            d =  "You see nothing special."
+        if not self.access(looker,"view") or i:
             return ""
-        return self.scene_desc or self.get_display_desc(looker,**kwargs)
+        return d
+    def get_background_desc(self, looker, state=None, **kwargs):
+        x=self.current_during(["scene_desc","invisible"])
+        sd,i = x["scene_desc"],x["invisible"]
+        if not self.access(looker,"bgview") or i:
+            return ""
+        return sd or self.get_display_desc(looker,**kwargs)
 
 class SpawnerObject(SceneObject):
     """

@@ -18,12 +18,14 @@ at_server_cold_stop()
 """
 
 from world.prototype_db import PrototypeDB
+from world.global_funcs import setup_cooldowns
 
 def at_server_init():
     """
     This is called first as the server is starting up, regardless of how.
     """
     PrototypeDB() # load toml prototypes
+    setup_cooldowns()
     pass
 
 

@@ -1,4 +1,5 @@
 from evennia.commands.default.muxcommand import MuxCommand
+from evennia.utils import create
 
 class SceneCommand(MuxCommand):
     """
@@ -9,14 +10,14 @@ class SceneCommand(MuxCommand):
     Scene/Tag EventTag[:type][=Value]
 
     Unimplemented:    
-    Scene/Create ObjName[:Class][:Priority] [=BGDesc]
-    Scene/Edit ObjName=Field:Value
+    Scene/Create ObjName[:Class][:Priority] [=scene_desc]
+    Scene/Set ObjName[:event]=Field:[Value]
     Scene/Remove ObjName
     
     # SUBTOPICS
     ## view
     Lists the scene objects in the current room, or more detail about a given
-    SceneCbject in the current room.
+    SceneObject in the current room.
     Scene[/view]: List scene objects
     Scene[/view] ObjName: Show Scene Object variables, including look description
                           and scene description.
@@ -34,12 +35,12 @@ class SceneCommand(MuxCommand):
     locks="cmd:perm(Builder)"    
     
     fault=None
-    valid_commands = ["create","edit","remove","view","tag"]
+    valid_commands = ["create","set","remove","view","tag"]
     command=None
     fieldlen = 15
     fieldsep = " |C|||n "
     seplen = 4 # don't take into consideration any formatting.  4 instead of 3 by default is not a typo, idk lol it works
-    nFields = 4
+    nFields = 5
     lhs_sections=[]
     rhs_sections=[]
     
@@ -56,6 +57,9 @@ class SceneCommand(MuxCommand):
         if len(self.lhs) > 0:
             self.lhs_sections = [*map(str.strip,self.lhs.split(":"))] if ':' in self.lhs else None
         if len(self.rhs or "") > 0:
+            s,e = self.rhs[0],self.rhs[-1]
+            if s == e and (s == '"' or s == "'"):
+                self.rhs=self.rhs[1:-1]
             self.rhs_sections = [*map(str.strip,self.rhs.split(":"))] if ':' in self.rhs else None
 
     def func(self):
@@ -67,8 +71,8 @@ class SceneCommand(MuxCommand):
                 self.View(self.args)
             case "create":
                 self.Create(self.lhs_sections or [self.lhs],self.rhs)
-            case "edit":
-                pass
+            case "set":
+                self.Set(self.lhs_sections or [self.lhs], self.rhs_sections or [self.rhs])
             case "remove":
                 pass
             case "tag":
@@ -101,16 +105,24 @@ class SceneCommand(MuxCommand):
         return str(txt).center(self.fieldlen)
     def ViewTableHeader(self):
         "Print the table header"
-        headers = ["Priority","dbref","Key","Class"]
+        headers = ["Priority","dbref","Key","Class","Invisible"]
         return self.fieldsep.join([*map(self.Field,headers)]) + f"|/{self.SepLine()}"
     def ViewTableRow(self,SceneObject,extended=False):
         "Print a table row.  If only one scene object is given, add extra data."
-        values=[SceneObject.priority,SceneObject.dbref,SceneObject.name,SceneObject.__class__.__name__]
+        i = SceneObject.current_during(["invisible"])["invisible"]
+        if i != SceneObject.invisible:
+            i = f"Currently {i}"
+        values=[SceneObject.priority,SceneObject.dbref,SceneObject.name,SceneObject.__class__.__name__,i]
         line=self.fieldsep.join([*map(self.Field,values)])
         if extended:
-            line += f"|/{self.SepLine()}"
+            line += f"|/{self.SepLine()}|/|CDescription vars:|n"
             for v in SceneObject.LongSceneVars:
                 line += f"|/{self.Field(v)}{self.fieldsep}{SceneObject.attributes.get(v)}"
+            if len(SceneObject.during):
+                for tag,repl in SceneObject.during.items():
+                    line += f"|/|CDuring event tag |y{tag}|C:|n"
+                    for varn,val in repl.items():
+                        line += f"|/{self.Field(varn)}{self.fieldsep}{val}"
         return line
         
     def ViewTableMsg(self,msg):
@@ -131,9 +143,37 @@ class SceneCommand(MuxCommand):
         self.caller.msg(f"|/Scene objects in |w{self.caller.location}({self.caller.location.dbref})|n")
         self.caller.msg(f"{self.ViewTableHeader()}|/{self.ViewTableBody(show)}|/|/")
     
-    def Create(self,lhs,rhs):
-        "My ass"
-        pass
+    def Create(self,lhs_sections,rhs): # scene/create name:class:priority=scene_desc
+        """     obj = create.create_object(
+                typeclass,
+                name,
+                loc,
+                home=loc,
+                report_to=caller,
+        """
+        helpstr="Scene/Create ObjName[:Class][:Priority] [=scene_desc]"
+        if lhs_sections == [""]:
+            self.caller.msg(helpstr)
+            return
+        cls = "SceneObject.SceneObject"
+        clsbrief="SceneObject"
+        prior=100
+        objname = lhs_sections[0]
+        loc=self.caller.location
+        for x in lhs_sections[1:]:
+            if x.isnumeric():
+                prior = int(x)
+            else:
+                cls=x
+                clsbrief=cls.split(".")[-1]
+        obj = create.create_object(cls, objname,loc,home=loc,report_to=self.caller)
+        obj.db.priority = prior
+        if rhs != None:
+            obj.db.scene_desc = rhs
+        else:
+            obj.db.scene_desc = f"There is a {objname} here, being {objname}y."
+        self.caller.msg(f"Created a {objname}({clsbrief}) in {loc}")
+        
     def Tag(self,lhs_sections,rhs):
         "Tag"
         if lhs_sections[0]=="": # no arguments given
@@ -178,3 +218,40 @@ class SceneCommand(MuxCommand):
                 self.caller.msg(f"|/|w{self.caller.location}({self.caller.location.dbref})|n: Scene state tag |w{tagname}|n is {t}({v})")
             else:
                 self.caller.msg(f"|/|w{self.caller.location}({self.caller.location.dbref})|n: Scene state tag |w{tagname}|n is unset.")
+    def Set(self,lhs_sections,rhs_sections):
+        helpstr="Scene/Set ObjectName[:EventTag]=Field[:Value]"
+        if len(lhs_sections) > 2 or len(rhs_sections) > 2:
+            self.caller.msg(f"Too many :sections|/{helpstr}")
+            return
+        if lhs_sections == [""]:
+            self.caller.msg(f"Scene/Set requires an object|/{helpstr}")
+            return
+        if rhs_sections == [None] or rhs_sections == [""]:
+            self.caller.msg(f"Scene/Set requires a field|/{helpstr}")
+            return
+        objname = lhs_sections[0]
+        event = lhs_sections[1] if len(lhs_sections) == 2 else None
+        field = rhs_sections[0]
+        value = rhs_sections[1] if len(rhs_sections) == 2 else None
+        if value != None and len(value)>0:
+            if value == "True":
+                value=True
+            elif value == "False":
+                value=False
+            elif value.isnumeric():
+                value = int(value)
+            elif len(value) > 1:
+                s,e = value[0],value[-1]
+                if s==e and (s=='"' or s=="'"):
+                    value = value[1:-1]
+        obj = self.SceneList(objname)[0]
+        if obj == None:
+            self.caller.msg(f"No scene object {objname}")
+            return
+        if event != None:
+            obj.set_during(event,field,value,caller=self.caller)
+            return
+        # Todo: detect/set type
+        if field in obj.SceneVars:
+            obj.attributes.add(field,value)
+            self.caller.msg(f"Set {objname}/{field}={value}")

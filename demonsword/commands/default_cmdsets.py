@@ -72,8 +72,6 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # This is still in testing/creation phase
         self.add(SceneCommand())
         self.add(StanceCommand())
-        self.add(JobCommand())
-        self.add(RoleCommand())
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):

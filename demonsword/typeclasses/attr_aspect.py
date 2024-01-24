@@ -41,26 +41,14 @@ def AttributeToAspects(attr:str) -> tuple[str,str]:
         return (AspectList[col],AspectList[row])
     except:
         return ("luc","luc")
-        
-def StatGrid(with_aspects=True,include_health=True,with_values=None) -> str:
-    table=[]
-    cols=[['luc','pow','fin','cap','res','aes','hea'],['bod','str','dex','stm','con','bea','hp'],['mnd','int','wit','mem','stb','san','mp'],['spr','wil','per','aur','wis','gra','sp']]
-    if not include_health:
-        del cols[0][-1], cols[1][-1], cols[2][-1], cols[3][-1]
-    if not with_aspects:
-        del cols[0], cols[0][0], cols[1][0], cols[2][0]
-    if not with_values:
-        table = cols
-    else:
-        for col in cols:
-            c = []
-            for r in col:
-                if with_aspects and (r in AspectList):
-                    c.extend( [f"|w{r.upper()}|n", f"|c{with_values[r].value}|n" ] )
-                else:
-                    c.extend( [r.upper(), f"|y{with_values[r].value}|n" ] )
-            table.append( c )
-    return EvTable(table=table,pad_width=0,pad_left=2,pad_right=2,align='c')
+def AttributeToAspectsIndex(attr:str) -> tuple[int,int]:
+    try:
+        i = AttributeList.index(attr)
+        col = i//6
+        row = i%6 + 3
+        return (col,row)
+    except:
+        return (-1,-1)    
 
 stat_default = {"bonus":0,"exp":0,"stress":0}
 
@@ -99,39 +87,27 @@ class Stat:
         int(Stat) is its value
         """
         return self.value
-    
-    # Exercising a stat actually either exercises the row or column.
-    # When you rest, the exp is distributed randomly.  Full stats improve with sleep.
+
     def Exercise(self,skill, amt):
         """
         """
-        (col_mult,row_mult) = (0.5,0.5)
-        if skill and skill.aspect != None:
-            if skill.aspect == self.col:
-                (col_mult,row_mult) = (0.75,0.25)
-            else:
-                (col_mult,row_mult) = (0.25,0.75)
-        amt = pow(0.5,amt)
-        if self.col.can_exercise:
-            base = self.col.exp // 1
-            self.col.exp += amt * col_mult
-            newbase = self.col.exp // 1
-            if newbase > base:
-                if not self.col.can_exercise:
-                    self.col.exp = newbase
-                    self.parent.msg(f"|CYour |w{self.col.name}|C aspect is full.  Perhaps you should |yrest|C.|n")
-                else:
-                    self.parent.msg(f"Your {self.col.name} is more experienced.")
-        if self.row.can_exercise:
-            base = self.row.exp // 1
-            self.row.exp += amt * row_mult
-            newbase = self.row.exp // 1
-            if newbase > base:
-                if not self.row.can_exercise:
-                    self.row.exp = newbase
-                    self.parent.msg(f"|CYour |w{self.row.name}|C aspect is full.  Perhaps you should |yrest|C.|n")
-                else:
-                    self.parent.msg(f"Your {self.row.name} is more experienced.")
+        (stat_mult,col_mult,row_mult) = (0.2,0.1,0.1)
+        if self.can_improve: # Stat capped on exp, redistribute without bias, with a little loss:
+            (stat_mult,col_mult,row_mult) = (0, 0.15, 0.15)
+        # if the skill is placed in a stance, distribute xp with bias and a little advantage:
+        if skill.aspect == self.col_key:
+            col_mult += row_mult * .75 + stat_mult * .25
+            row_mult *= .375
+            stat_mult *= .875
+        elif skill.aspect == self.row_key:
+            row_mult += col_mult * .75 + stat_mult * .25
+            col_mult * .375
+            stat_mult *= .875
+            
+        self.add_xp(stat_mult * amt)
+        self.col.add_xp(col_mult * amt)
+        self.row.add_xp(row_mult * amt)
+            
     # Attribute exp into bonus increase
     def Improve(self):
         self.exp = 0
@@ -162,7 +138,12 @@ class Stat:
     @property
     def can_improve(self):
         return self.exp >= (self.bonus+1) and self.bonus < (self.col.bonus + self.row.bonus + 3)
-
+    def add_xp(self,amt):
+        if self.exp == self.bonus + 1:
+            return
+        self.exp = min(self.exp + amt, self.bonus + 1)
+        if self.exp == self.bonus + 1:
+            self.parent.msg(f"|CYou feel like your |w{self.name}|C Stat is full.  Perhaps you should |ysleep|C it off.|n")
 
 aspect_default = {"bonus":0,"exp":0}
 class AspectAttribute(StatAttribute):
@@ -179,6 +160,9 @@ class Aspect:
     data = AspectAttribute()
     bonus = SubProperty()
     exp = SubProperty()
+    xp_full_hint = "|cYou feel like your |w{name}|c Aspect is full.  Perhaps you should |yrest|c.|n"
+    stat_full_hint="|CYour |w{name}|C feels full.  Maybe you should |ysleep|C it off.|n"
+    aspect_full_hint="|CYou feel like your |w{name}|C aspect is at full capacity!|n"
     def __init__(self,character,key):
         self.parent = character
         self.core   = character.stats
@@ -208,7 +192,7 @@ class Aspect:
     def _save(self):
         self.core.attributes.add(self.key,self.data,category="stats")
     
-    # Resting: Distribute experience to child 
+    # Resting: Distribute experience to children
     def Rest(self):
         if len(self.related) == 0:
             return # luck
@@ -219,7 +203,7 @@ class Aspect:
             if s.can_exercise:
                 candidates.append(s)
         if len(candidates) == 0:
-            self.parent.msg(f"|CYou feel like your |w{self.name}|C aspect is at full capacity!|n")
+            self.parent.msg(aspect_full_hint.format(name=self.name))
             return
         while len(candidates)>0 and self.exp > 0:
             n = randint(0,len(candidates)-1)
@@ -229,7 +213,7 @@ class Aspect:
             self.exp -= 1
             if not c.can_exercise: # now full
                 candidates.remove(c)
-                self.parent.msg(f"|CYour |w{c.name}|C feels full.  Maybe you should |ysleep|C it off.|n")
+                self.parent.msg(self.stat_full_hint.format(name=c.name))
                 if len(candidates) == 0:
                     return # give message next time
         #self._save()
@@ -246,16 +230,21 @@ class Aspect:
         for s in self.Stats:
             if s.can_improve:
                 s.Improve()
-    
+    def add_xp(self,amt):
+        if self.exp == self.bonus + 2:
+            return
+        self.exp = min(self.exp + amt, self.bonus + 2)
+        if self.exp == self.bonus + 2:
+            self.parent.msg(xp_full_hint.format(name=self.name))
     @property
     def value(self): # For compatability.  For stats, value = bonus + aspects.
         return self.data["bonus"]
     @property
     def can_exercise(self):
-        return self.exp < (self.bonus + 2)
+        return not self.can_rest
     @property
     def can_rest(self):
-        return self.exp == (self.bonus+2)
+        return self.exp >= (self.bonus+2)
     @property
     def can_improve(self):
         for i in self.Stats:
