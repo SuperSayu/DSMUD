@@ -111,7 +111,7 @@ class Skill:
                 self.parent.msg(f"Your {self.name} skill has completely cooled down.")
                 self.parent.skills.warm.remove(self.key)
         
-    def roll(self,active=2,show=False):
+    def roll(self,show=False):
         """
             Roll the skill.  The maximum tier of the skill check caps your affinity.
             Any stats above your training value are turned into Brute dice.
@@ -126,16 +126,16 @@ class Skill:
         # If you are rolling a standby or inactive skill, some dice are penalized
         stat_brute = 0  # Brute: 50% -1, 50% +1
         aff_slip = 0    #  Slip: 30% -1, 40% +1, 30% +2
-        
-        if active < 2:
-            if stat > momentum:
-                stat_brute = stat - momentum
-                stat = momentum
-        if active == 0:
+        active = self.active
+        if active != True:
+            if stat > streak:
+                stat_brute = stat - streak
+                stat = streak
+        if active == None:
             eff = 0
-            if aff > momentum:
-                aff_slip = aff - momentum
-                aff = momentum
+            if aff > streak:
+                aff_slip = aff - streak
+                aff = streak
         
         # Penalize stats above your training
         
@@ -144,12 +144,13 @@ class Skill:
             brute = stat - trn - 1
             stat = trn + 1
         if show:
-            return show_roll(self.parent,self.name,d4=eff, d6=stat, d8=trn,d10=aff,d12=mas,brute=stat_brute,slip=aff_slip)
+            astate = "(active)" if active else "(passive)" if active==False else "(inactive)"
+            return show_roll(self.parent,f"{self.name}{astate}",d4=eff, d6=stat, d8=trn,d10=aff,d12=mas,brute=stat_brute,slip=aff_slip)
         else:
             return roll(d4=eff, d6=stat, d8=trn,d10=aff,d12=mas,brute=stat_brute,slip=aff_slip)
             
 
-    def Check(self,tier = 1, min_tier = -1, max_tier = -1, *, active=2,show=True,do_practice=True, success_func=None, fail_func=None, **data ):
+    def Check(self,tier = 1, min_tier = -1, max_tier = -1, *, show=True,do_practice=True, success_func=None, fail_func=None, **data ):
         """
             Perform a skill check, DC 1 + 2*tier.
             If the check fails but would succeed at a lower tier,
@@ -167,7 +168,7 @@ class Skill:
         if max_tier == -1:
             max_tier = tier
         challenge = 1 + 2 * tier
-        result = self.roll(active=active,show=True)
+        result = self.roll(show=True)
         result_tier = (result-1)//2
         if do_practice:
             self.practice(abs(result - challenge))

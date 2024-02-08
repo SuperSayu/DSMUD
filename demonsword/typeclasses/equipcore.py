@@ -124,10 +124,10 @@ class EquipmentCore:
         if ignore_hands:
             candidates.remove(self.main_hand)
             candidates.remove(self.off_hand)
-        result= search_object(itemKey,typeclass=itemClass,candidates=candidates)
+        result= self.parent.search(itemKey, typeclass=itemClass,candidates=candidates,exact=False)
         if hasattr(result,"__iter__"):
             result = [*result]
-        return result
+        return result or []
         
     def swap_slots(self,slot_a="hand_l",slot_b="hand_r"):
         s = self.slot_names
@@ -203,6 +203,15 @@ class EquipmentCore:
                 candidates.append(item)
         for item in self.containers:
             candidates.extend(item.fast_contents)
+        return [x for x in candidates if x != None]
+    @property
+    def contents(self):
+        candidates=[]
+        for item in self.slots:
+            if item != None:
+                candidates.append(item)
+                if item.container:
+                    candidates.extend(item.fast_contents)
         return candidates
     @property
     def containers(self):

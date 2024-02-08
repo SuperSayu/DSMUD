@@ -66,6 +66,7 @@ class Stat:
     bonus = SubProperty()
     exp = SubProperty()
     stress = SubProperty()
+    stat_full_hint="|CYour |w{name}|C Stat feels full.  Maybe you should |yrest|C.|n"
     
     def __init__(self,character,key:str):
         self.parent = character
@@ -143,7 +144,7 @@ class Stat:
             return
         self.exp = min(self.exp + amt, self.bonus + 1)
         if self.exp == self.bonus + 1:
-            self.parent.msg(f"|CYou feel like your |w{self.name}|C Stat is full.  Perhaps you should |ysleep|C it off.|n")
+            self.parent.msg(self.stat_full_hint.format(name = self.name))
 
 aspect_default = {"bonus":0,"exp":0}
 class AspectAttribute(StatAttribute):
@@ -160,9 +161,9 @@ class Aspect:
     data = AspectAttribute()
     bonus = SubProperty()
     exp = SubProperty()
-    xp_full_hint = "|cYou feel like your |w{name}|c Aspect is full.  Perhaps you should |yrest|c.|n"
-    stat_full_hint="|CYour |w{name}|C feels full.  Maybe you should |ysleep|C it off.|n"
-    aspect_full_hint="|CYou feel like your |w{name}|C aspect is at full capacity!|n"
+    xp_full_hint = "|cYour |w{name}|c Aspect feels full.  Perhaps you should |ysleep|c it off.|n"
+    stat_full_hint="|CYour |w{name}|C Stat feels full.  Maybe you should |yrest|C.|n"
+    aspect_full_hint="|CYou feel like your |w{name}|C Aspect is at full capacity!|n"
     def __init__(self,character,key):
         self.parent = character
         self.core   = character.stats
@@ -231,11 +232,12 @@ class Aspect:
             if s.can_improve:
                 s.Improve()
     def add_xp(self,amt):
-        if self.exp == self.bonus + 2:
+        cap = self.bonus + 2
+        if self.exp == cap:
             return
-        self.exp = min(self.exp + amt, self.bonus + 2)
-        if self.exp == self.bonus + 2:
-            self.parent.msg(xp_full_hint.format(name=self.name))
+        self.exp = min(self.exp + amt, cap)
+        if self.exp == cap:
+            self.parent.msg(self.xp_full_hint.format(name=self.name))
     @property
     def value(self): # For compatability.  For stats, value = bonus + aspects.
         return self.data["bonus"]

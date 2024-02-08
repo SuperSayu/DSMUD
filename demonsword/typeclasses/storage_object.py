@@ -4,6 +4,8 @@
 from .item import Item,Equipment
 from util.AttributeProperty import AttributeProperty
 from .SceneObject import SceneObject
+from collections import defaultdict
+from evennia.utils.utils import iter_to_str
 
 class Storage(Equipment):
     _content_types = ("object","item","equip","storage",) 
@@ -18,6 +20,27 @@ class Storage(Equipment):
         self.open = True
     def close_container(self):
         self.open = False
+    def get_display_things(self, looker, **kwargs):
+        if not self.open:
+            return "|/It is |wclosed|n."
+        def _filter_visible(obj_list):
+            return (obj for obj in obj_list if obj != looker and obj.access(looker, "view"))
+
+        # sort and handle same-named things
+        things = _filter_visible(self.contents_get(content_type="object"))
+
+        grouped_things = defaultdict(list)
+        for thing in things:
+            grouped_things[thing.get_display_name(looker, **kwargs)].append(thing)
+
+        thing_names = []
+        for thingname, thinglist in sorted(grouped_things.items()):
+            nthings = len(thinglist)
+            thing = thinglist[0]
+            singular, plural = thing.get_numbered_name(nthings, looker, key=thingname)
+            thing_names.append(singular if nthings == 1 else plural)
+        thing_names = iter_to_str(thing_names)
+        return f"|/|wIt contains:|n {thing_names}" if thing_names else "|/It is |wempty|n."
     
     def fit_check(self,incoming):
         if incoming.size > self.max_size:

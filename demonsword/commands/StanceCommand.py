@@ -7,6 +7,7 @@
 #pass
 from evennia.commands.default.muxcommand import MuxCommand
 from world.skills import SkillDB
+from typeclasses.attr_aspect import AttributeToAspects,StatNames
 SkillDB = SkillDB()
 
 class StanceCommand(MuxCommand):
@@ -109,6 +110,7 @@ class StanceCommand(MuxCommand):
         aspect = None
         skill = rhs
         skillset = self.caller.skills.active_skillset(self.sstype)
+        
         if self.rhs == None or len(self.lhs) < 3:
             self.caller.msg(helptext)
             return
@@ -123,7 +125,13 @@ class StanceCommand(MuxCommand):
         if rhs == "":
             skillset.SetSkill(aspect,None)
         else:
-            skillset.SetSkill(aspect,rhs)
+            skill_stat = SkillDB[skill]["stat"]
+            skill_aspects = AttributeToAspects(skill_stat)
+            if "luc" in skill_aspects or aspect in skill_aspects:
+                skillset.SetSkill(aspect,rhs)
+            else:
+                ca,ra = skill_aspects
+                self.caller.msg(f"The |w{skill}|n skill is associated with the |w{StatNames[skill_stat]}|n stat.|/You can only insert it into the {StatNames[ca]}(|y{ca}|n) or {StatNames[ra]}(|y{ra}|n) aspect slots, not the {StatNames[aspect]} aspect slot.")
     def ViewLine(self,title,x):
         return f"* {title}: {x.data if x != None else 'None'}"
     def View(self,lhs):

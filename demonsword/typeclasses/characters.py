@@ -40,6 +40,9 @@ class Character(ObjectParent, DefaultCharacter):
     """
     def at_init(self):
         self.skills.normalize(fast=True)
+        
+    def contents_get(self, exclude=None, content_type=None):
+        return self.items.contents
 #region handlers
     @lazy_property
     def stats(self):

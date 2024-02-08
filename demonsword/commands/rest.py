@@ -63,11 +63,6 @@ class TrainCommand(StateCommand):
         if prob(20):
             self.caller.msg("You converse with your trainer for a while.")
     def state_continue(self):
-        if self.last_skill != None:
-            if not self.last_skill.choosing:
-                self.last_skill = None
-            self.sleep_rand(3,5)
-            return
         if len(self.need) == 0:
             if self.needless:
                 self.caller.msg("Your trainer says they have nothing to teach you right now.")
@@ -76,10 +71,6 @@ class TrainCommand(StateCommand):
             return
         etwas = self.need.pop()
         etwas.train_up()
-        if etwas.choosing:
-            self.last_skill = etwas
-        else:
-            self.last_skill = None
         self.sleep_rand(3,5)
         
 class MeditateCommand(StateCommand):
@@ -101,11 +92,6 @@ class MeditateCommand(StateCommand):
     def state_finish(self):
         self.caller.msg("You finish meditating.")
     def state_continue(self):
-        if self.last_skill != None:
-            if not self.last_skill.choosing:
-                self.last_skill = None
-            self.sleep_rand(3,5)
-            return
         if len(self.need) == 0:
             if self.needless:
                 self.caller.msg("You feel like your meditation was unproductive.")
@@ -113,10 +99,6 @@ class MeditateCommand(StateCommand):
             return
         etwas = self.need.pop()
         etwas.Meditate()
-        if etwas.choosing:
-            self.last_skill = etwas
-        else:
-            self.last_skill = None
         self.sleep_rand(3,5)
 class SleepCommand(StateCommand):
     """

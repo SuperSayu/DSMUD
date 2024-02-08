@@ -40,8 +40,8 @@ def show_roll(caller,skillName,challenge=0,*,d4=0,d6=0,d8=0,d10=0,d12=0,d16=0,d2
     r = roll(d4=d4,d6=d6,d8=d8,d10=d10,d12=d12,d16=d16,d20=d20,d80=d80,brute=brute,slip=slip)
     tier = (r - 1)//2
     c = f" vs CR {challenge}: {r-challenge}" if challenge>0 else ""
-    t = f" (tier {tier})"
-    caller.msg(f"Skill check for |w{skillName}|n ({dice}): {r}{t}{c}")
+    t = f" (Tier {tier})"
+    caller.msg(f"|gSkill check|n for |w{skillName}|n ({dice}): {r}|g{t}|n{c}")
     return r
     
 def roll(*,d4=0,d6=0,d8=0,d10=0,d12=0,d16=0,d20=0,d80=1,brute=0,slip=0):

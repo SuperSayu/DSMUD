@@ -16,6 +16,11 @@ class SkillsCommand(Command):
         When you first train, you will associate skills with an attribute.
         Later, you will associate skills with an aspect.
         I hate your face.
+        
+        Usage:
+            * Skill [skillname] :: View list of skills or more info on one
+            * Skill/Equip[/Force] [skillset_name/]skillset_type=aspect_type :: Equip skill to slot in current or other skillset (stance, job, or role)
+            * Skill/Unequip[/Force] [skillset_name/]skillset_type :: Remove this skill from current or other skillset (stance, job, or role) 
     """
     key="skill"
     aliases=["skills"]
@@ -47,30 +52,125 @@ class SkillsCommand(Command):
             data.append( [*map(lambda func: func(skillObj), funcs)] )
         data = [*map(lambda tup: list(tup), zip(*data))] # cols of data # [rows] -> [cols]
         self.caller.msg(EvTable(*headers, table=data,pad_width=0,pad_left=1,pad_right=1,align='c',border='incols'))
-    def parse(self):
+    def parse_debug(self):
         if self.args == "//debug/reset":
             self.caller.skills._reset()
             self.caller.msg("|r---= Debug: Resetting all skills =---|n")
             self.args = ""
-            return
+            return True
+        if self.args.startswith("//debug/del"):
+            arglist = self.args.split(" ")[1:]
+            if not arglist:
+                self.caller.msg(f"|yskill|r//debug/del|n skill")
+                return True
+            for skill in arglist:
+                if skill in self.caller.skills:
+                    del self.caller.skills[skill]
+                    self.caller.msg(f"|r---= Debug: Deleted skill {skill} =---|n")
+                else:
+                    self.caller.msg(f"|yskill|r//debug/del|n: {skill} does not exist")
+            self.args = ""
+            self.raw = False
+            return True
+        return False
+
+    # todo: don't feel like doing this tonight
+    # have to fix the whole damn syntax because I didn't add the skill name
+    # hate this bullshit
+    def parse_equip(self):
+        if self.args.startswith("/equip"):
+            if not "=" in self.args:
+                self.args=""
+                return True
+            self.command = "equip"
+            self.args = self.args[6:].strip()
+            if self.args.startswith("/force"):
+                self.force = True
+                self.args = self.args[6:].strip()
+            mix = self.args.split("=")
+            if len(mix) > 2: # know at least one = exists
+                self.command="view"
+                self.args=""
+                return True
+            self.lhs, self.set_aspect = mix
+            if not self.set_aspect in AspectList:
+                self.command="view"
+                self.args=""
+                return True
+            if "/" in self.lhs:
+                mix = self.lhs.split("/")
+                if len(mix) > 2:
+                    self.command="view"
+                    self.args=""
+                    return True
+                self.skills_name, self.skills_type = mix
+                if not self.skills_type in ["stance","job","role"]:
+                    self.command="view"
+                    self.args=""
+                    return True
+        return False
+    def parse_unequip(self):
+        if self.args.startswith("/equip"):
+            if "=" in self.args: # wrong
+                self.args=""
+                return True
+            self.command = "unequip"
+            self.args = self.args[6:].strip()
+            if self.args.startswith("/force"):
+                self.force = True
+                self.args = self.args[6:].strip()
+            if "/" in self.args:
+                mix = self.args.split("/")
+                if len(mix) > 2:
+                    self.command="view"
+                    self.args=""
+                    return True
+                self.skills_name, self.skills_type = mix
+                if not self.skills_type in ["stance","job","role"]:
+                    self.command="view"
+                    self.args=""
+                    return True
+        return False
+    def parse(self):
+        self.command = "view"
+        self.force = False
+        self.skills_name=None
+        self.skills_type=None
+        self.set_aspect=None
         self.args = self.args.strip().lower()
         self.raw = self.args.startswith("/raw")
         if self.raw:
             self.args = self.args[4:].strip()
-        
-    def func(self):
-        target=self.args.strip().lower()
-        if len(target):
-            if not target in self.caller.skills:
-                self.caller.msg(f"You do not currently have the |w{target}|n skill")
-                return
-            if self.raw:
-                s = self.caller.skills[target]
-                self.caller.msg(f"{str(s.data)}")
-            else:
-                self.SkillGrid(target)#self.caller.skills.show(target)
+        if self.parse_debug():
+            return        
+        if self.args.startswith("/force"):
+            self.force = True
+            self.args = self.args[6:].strip()
+#        self.parse_equip() or self.parse_unequip()
+        if self.command == "view":
+            self.target=self.args
         else:
-            self.SkillGrid()#self.caller.skills.show()
+            self.target = None
+
+    def func(self):
+        match self.command:
+            case "view":
+                if self.target:
+                    if not self.target in self.caller.skills:
+                        self.caller.msg(f"You do not currently have the |w{self.target}|n skill")
+                        return
+                    if self.raw:
+                        s = self.caller.skills[target]
+                        self.caller.msg(f"{str(s.data)}")
+                    else:
+                        self.SkillGrid(target)
+                else:
+                    self.SkillGrid()
+            case 'equip':
+                self.caller.msg(f"f{self.force} n'{self.skills_name}' t'{self.skills_type}' a'{self.set_aspect}'")
+                
+            case 'unequip':
+                self.caller.msg(f"f{self.force} n'{self.skills_name}' t'{self.skills_type}'")
 
 class StatsCommand(Command):
     """

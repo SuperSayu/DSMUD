@@ -33,7 +33,8 @@ from evennia.settings_default import *
 
 # This is the name of your game. Make it catchy!
 SERVERNAME = "demonsword"
-
+SEARCH_MULTIMATCH_REGEX = r"(?P<name>[^#]*)#(?P<number>[0-9]+)(?P<args>.*)"
+SEARCH_MULTIMATCH_TEMPLATE = " {name}#{number}{aliases}{info}\n"
 ######################################################################
 # Settings given in secret_settings.py override those in this file.
 ######################################################################

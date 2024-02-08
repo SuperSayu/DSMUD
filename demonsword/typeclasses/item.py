@@ -53,6 +53,23 @@ class Item(Object):
         Does not return self.
         """
         return []
+    def get_display_footer(self, looker,**kwargs):
+        if self.portable:
+            if self.location == looker:
+                if self in looker.items.equip_slots:
+                    return f"You are |ywearing it|n, on your |y{self.slot}|n."
+                else:
+                    match self.slot:
+                        case "hand_r":
+                            return "It's in your |yright hand|n."
+                        case "hand_l":
+                            return "It's in your |yleft hand|n."
+                        case _:
+                            return "You are |ycarrying it|n."
+            elif self.location == looker.location:
+                return "It is on |ythe floor|n here."
+            elif isinstance(self.location,Object):
+                return f"It is inside of the {self.location}."
 
 class Equipment(Item):
     _content_types = ("object","item","equip",)
